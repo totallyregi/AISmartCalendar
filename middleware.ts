@@ -3,10 +3,12 @@ import { updateSession } from "@/lib/supabase/middleware";
 
 const protectedPaths = [
   "/dashboard",
+  "/today",
+  "/weekly",
+  "/calendar",
   "/classes",
   "/assignments",
   "/habits",
-  "/today",
   "/check-in",
   "/reflection",
 ];

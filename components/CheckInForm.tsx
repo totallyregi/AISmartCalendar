@@ -31,7 +31,7 @@ export function CheckInForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+    <form onSubmit={handleSubmit} className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
       <div className="space-y-4">
         <div>
           <label htmlFor="how" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">

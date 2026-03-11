@@ -1,0 +1,53 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+const links = [
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/today", label: "Today" },
+  { href: "/weekly", label: "Weekly" },
+  { href: "/calendar", label: "Calendar" },
+  { href: "/classes", label: "Classes" },
+  { href: "/assignments", label: "Assignments" },
+  { href: "/habits", label: "Habits" },
+  { href: "/check-in", label: "Check-in" },
+  { href: "/reflection", label: "Reflection" },
+];
+
+export function Sidebar() {
+  const pathname = usePathname();
+  return (
+    <aside className="sidebar fixed left-0 top-0 z-20 flex h-full w-56 flex-col border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="flex h-14 shrink-0 items-center border-b border-zinc-200 px-4 dark:border-zinc-800">
+        <Link href="/dashboard" className="font-semibold text-zinc-900 dark:text-zinc-100 transition-opacity hover:opacity-80">
+          AISmartCalendar
+        </Link>
+      </div>
+      <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
+        {links.map(({ href, label }, i) => (
+          <Link
+            key={href}
+            href={href}
+            style={{ animationDelay: `${i * 30}ms` }}
+            className={`sidebar-link block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+              pathname === href
+                ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+            }`}
+          >
+            {label}
+          </Link>
+        ))}
+      </nav>
+      <div className="border-t border-zinc-200 p-3 dark:border-zinc-800">
+        <Link
+          href="/privacy"
+          className="block rounded-lg px-3 py-2 text-xs text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300"
+        >
+          Privacy
+        </Link>
+      </div>
+    </aside>
+  );
+}

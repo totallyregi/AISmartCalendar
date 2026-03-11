@@ -8,16 +8,34 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const date = searchParams.get("date");
-  if (!date) return NextResponse.json({ error: "date query required" }, { status: 400 });
+  const startDate = searchParams.get("startDate");
+  const endDate = searchParams.get("endDate");
 
-  const { data, error } = await supabase
-    .from("daily_plans")
-    .select("id, date, plan_json, created_at")
-    .eq("user_id", user.id)
-    .eq("date", date)
-    .single();
+  if (date) {
+    const { data, error } = await supabase
+      .from("daily_plans")
+      .select("id, date, plan_json, created_at")
+      .eq("user_id", user.id)
+      .eq("date", date)
+      .single();
 
-  if (error && error.code !== "PGRST116") return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!data) return NextResponse.json(null, { status: 404 });
-  return NextResponse.json(data);
+    if (error && error.code !== "PGRST116") return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!data) return NextResponse.json(null, { status: 404 });
+    return NextResponse.json(data);
+  }
+
+  if (startDate && endDate) {
+    const { data, error } = await supabase
+      .from("daily_plans")
+      .select("id, date, plan_json, created_at")
+      .eq("user_id", user.id)
+      .gte("date", startDate)
+      .lte("date", endDate)
+      .order("date");
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(data ?? []);
+  }
+
+  return NextResponse.json({ error: "date or startDate+endDate query required" }, { status: 400 });
 }

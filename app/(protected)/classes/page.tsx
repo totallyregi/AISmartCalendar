@@ -7,7 +7,7 @@ export default async function ClassesPage() {
   const { data: classes } = await supabase.from("classes").select("*").order("name");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
           My classes

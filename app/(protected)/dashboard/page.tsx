@@ -19,20 +19,20 @@ export default async function DashboardPage() {
         Dashboard
       </h1>
 
-      <section>
+      <section className="animate-in" style={{ animationDelay: "50ms" }}>
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-zinc-800 dark:text-zinc-200">
             Today&apos;s plan
           </h2>
           <Link
             href="/today"
-            className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            className="text-sm font-medium text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
           >
             View / Generate →
           </Link>
         </div>
         {plan?.blocks?.length ? (
-          <ul className="mt-2 space-y-1 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+          <ul className="mt-2 space-y-1.5 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition-shadow dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-none">
             {plan.blocks.slice(0, 5).map((b, i) => (
               <li key={i} className="text-sm text-zinc-700 dark:text-zinc-300">
                 {b.start}–{b.end} — {b.label}
@@ -46,20 +46,20 @@ export default async function DashboardPage() {
         )}
       </section>
 
-      <section>
+      <section className="animate-in" style={{ animationDelay: "100ms" }}>
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-zinc-800 dark:text-zinc-200">
             Upcoming assignments
           </h2>
           <Link
             href="/assignments"
-            className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            className="text-sm font-medium text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
           >
             All assignments →
           </Link>
         </div>
         {assignments.length ? (
-          <ul className="mt-2 space-y-2 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+          <ul className="mt-2 space-y-2 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition-shadow dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-none">
             {assignments.map((a) => (
               <li key={a.id} className="flex justify-between text-sm">
                 <span className="text-zinc-700 dark:text-zinc-300">{a.title}</span>
