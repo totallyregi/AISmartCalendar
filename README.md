@@ -1,59 +1,85 @@
-# AISmartCalendar
+# AISmartCalendar v2
 
-Calendar-aware AI productivity assistant for college students. Plan assignments, habits (including workouts and gym), and get daily action plans and weekly reflections.
+Class-centric planner with Google Calendar sync, fixed/flexible habits, and deterministic weekly schedule generation.
 
 ## Stack
 
-- **Next.js** (App Router), React, TypeScript, Tailwind
-- **Supabase** — auth and PostgreSQL
-- **OpenAI API** — task breakdown, daily plans, weekly reflections
-- **Vercel** — deployment
+- Next.js (App Router), React, TypeScript, Tailwind
+- Supabase (Auth + Postgres + RLS)
+- Vercel
+- OpenAI (optional in this pivot branch; not required for weekly generator)
+
+## Core v2 Features
+
+- Google Calendar connect + sync into app calendar
+- Class management with:
+  - class code + class name
+  - recurring weekly meeting slots in 15-minute intervals
+- Sidebar class dropdown with direct class tabs
+- Class-locked assignments:
+  - name, due datetime, estimated completion time (15-minute granularity)
+- Habits v2:
+  - fixed habits (days + start/end)
+  - flexible habits (duration + preferred days and/or times per week)
+- Unified calendar layers:
+  - imported external events
+  - classes
+  - fixed habits
+  - generated weekly blocks
+- Deterministic weekly scheduler:
+  - Sunday-Saturday planning window
+  - strict week order (cannot skip ahead)
+  - assignment-minute allocation before due date
 
 ## Setup
 
-1. **Clone and install**
+1. Install
 
-   ```bash
-   npm install
-   ```
+```bash
+npm install
+```
 
-2. **Supabase**
+2. Supabase
 
-   - Create a project at [supabase.com](https://supabase.com).
-   - Run the SQL in `supabase/schema.sql` in the SQL Editor (creates tables and RLS).
-   - In Authentication > URL Configuration, add redirect URL: `http://localhost:3000/auth/callback` (and your production URL later).
-   - In Settings > API copy the project URL and anon key.
+- Create project and run `supabase/schema.sql` in SQL editor.
+- Ensure auth works for your local/prod domains.
 
-3. **Environment**
+3. Google OAuth (Google Calendar)
 
-   Copy `.env.example` to `.env.local` and set:
+Create OAuth client in Google Cloud Console (Web app):
+- Authorized redirect URI (local):
+  - `http://localhost:3000/api/integrations/google/callback`
+- Authorized redirect URI (prod):
+  - `https://<your-vercel-domain>/api/integrations/google/callback`
 
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `OPENAI_API_KEY`
+4. Environment (`.env.local`)
 
-4. **Run**
+```bash
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+OPENAI_API_KEY=...
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+```
 
-   ```bash
-   npm run dev
-   ```
+5. Run
 
-   Open [http://localhost:3000](http://localhost:3000). Sign up, add classes/assignments/habits, then use **Today** to generate a daily plan and **Check-in** for daily notes. **Reflection** gives an AI weekly summary.
+```bash
+npm run dev
+```
 
-## Deploy to Vercel
+## Deployment (Vercel)
 
-1. Push this repo to GitHub and connect it in [Vercel](https://vercel.com).
-2. Add the same env vars in Vercel: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `OPENAI_API_KEY`.
-3. In Supabase Authentication > URL Configuration, add your Vercel URL (e.g. `https://your-app.vercel.app/auth/callback`) as a redirect URL.
-4. Deploy.
+Set the same env vars in Vercel:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `OPENAI_API_KEY`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
 
-## Features
+Then redeploy.
 
-- **Classes** — manual schedule (e.g. Mon/Wed 10am).
-- **Assignments** — due date, course, notes; “Break down with AI” for subtasks.
-- **Habits** — e.g. Gym, Workout, Reading; duration and optional preferred time. The daily plan schedules 1–2 habits around academics.
-- **Today** — AI-generated daily plan with study blocks (prioritized by due date) and 1–2 habits.
-- **Check-in** — short daily reflection (how it went, blockers).
-- **Reflection** — AI weekly summary (supportive, no guilt).
+## Important Notes
 
-Guidance, not guilt. No streaks or punishment.
+- Existing v1 tables/routes (today/check-in/reflection) were removed from active app flow.
+- If you already had old schema data, run the v2 schema migration in Supabase before using these routes.

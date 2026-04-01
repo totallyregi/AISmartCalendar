@@ -7,15 +7,17 @@ export async function PUT(
 ) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
   const updates: Record<string, unknown> = {};
-  if (typeof body.title === "string") updates.title = body.title;
-  if (typeof body.due_date === "string") updates.due_date = body.due_date;
-  if (typeof body.course_name === "string") updates.course_name = body.course_name;
-  if (body.notes !== undefined) updates.notes = body.notes;
+  if (typeof body.name === "string") updates.name = body.name;
+  if (typeof body.due_at === "string") updates.due_at = body.due_at;
+  if (typeof body.estimated_minutes === "number") updates.estimated_minutes = body.estimated_minutes;
+  if (typeof body.remaining_minutes === "number") updates.remaining_minutes = body.remaining_minutes;
   if (["not_started", "in_progress", "done"].includes(body.status)) updates.status = body.status;
 
   const { data, error } = await supabase
@@ -36,10 +38,16 @@ export async function DELETE(
 ) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { error } = await supabase.from("assignments").delete().eq("id", id).eq("user_id", user.id);
+  const { error } = await supabase
+    .from("assignments")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

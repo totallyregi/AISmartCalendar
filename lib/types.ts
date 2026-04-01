@@ -1,66 +1,65 @@
 export type AssignmentStatus = "not_started" | "in_progress" | "done";
+export type HabitType = "fixed" | "flexible";
 
-export interface Profile {
-  id: string;
-  display_name: string | null;
-  created_at: string;
-  updated_at: string;
+export interface ClassMeeting {
+  id?: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
 }
 
-export interface Class {
+export interface ClassSection {
   id: string;
   user_id: string;
-  name: string;
-  schedule: string;
-  created_at: string;
+  class_code: string;
+  class_name: string;
+  created_at?: string;
+  class_meetings?: ClassMeeting[];
 }
 
 export interface Assignment {
   id: string;
   user_id: string;
-  title: string;
-  due_date: string;
-  course_name: string;
-  notes: string | null;
+  class_id: string;
+  name: string;
+  due_at: string;
+  estimated_minutes: number;
+  remaining_minutes: number;
   status: AssignmentStatus;
-  created_at: string;
-}
-
-export interface AssignmentSubtask {
-  id: string;
-  assignment_id: string;
-  title: string;
-  order: number;
-  completed: boolean;
+  created_at?: string;
 }
 
 export interface Habit {
   id: string;
   user_id: string;
   name: string;
-  typical_duration_min: number;
-  preferred_time: string | null;
+  type: HabitType;
   active: boolean;
   created_at?: string;
 }
 
-export interface DailyPlanBlock {
-  start: string;
-  end: string;
-  type: "class" | "study" | "habit" | "break";
-  label: string;
-  details?: string;
+export interface HabitFixedSlot {
+  id?: string;
+  habit_id?: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
 }
 
-export interface DailyPlan {
-  date: string;
-  blocks: DailyPlanBlock[];
+export interface HabitFlexibleRule {
+  habit_id?: string;
+  duration_minutes: number;
+  preferred_days: number[];
+  times_per_week?: number | null;
 }
 
-export interface CheckIn {
-  id: string;
-  user_id: string;
-  date: string;
-  responses_json: Record<string, string>;
-  created_at: string;
+export interface WeeklyPlanBlock {
+  id?: string;
+  block_type: "assignment" | "habit_flexible" | "habit_fixed" | "class" | "external";
+  title: string;
+  starts_at: string;
+  ends_at: string;
+  assignment_id?: string | null;
+  habit_id?: string | null;
+  planned_minutes?: number;
 }

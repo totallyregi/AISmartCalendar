@@ -4,19 +4,35 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+type DayMeta = { external: number; classes: number; fixedHabits: number; generated: number };
 
 export function CalendarView({
   year,
   month,
-  planDates,
+  selectedDate,
+  dayMeta,
 }: {
   year: number;
   month: number;
-  planDates: string[];
+  selectedDate: string;
+  dayMeta: Record<string, DayMeta>;
 }) {
   const router = useRouter();
-  const planSet = new Set(planDates);
   const first = new Date(year, month - 1, 1);
   const last = new Date(year, month, 0);
   const startPad = first.getDay();
@@ -35,6 +51,7 @@ export function CalendarView({
     const y = month === 1 ? year - 1 : year;
     router.push(`/calendar?year=${y}&month=${m}`);
   }
+
   function nextMonth() {
     const m = month === 12 ? 1 : month + 1;
     const y = month === 12 ? year + 1 : year;
@@ -48,57 +65,43 @@ export function CalendarView({
           {MONTH_NAMES[month - 1]} {year}
         </h2>
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={prevMonth}
-            className="rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
-          >
-            ← Prev
-          </button>
-          <button
-            type="button"
-            onClick={nextMonth}
-            className="rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
-          >
-            Next →
-          </button>
+          <button type="button" onClick={prevMonth} className="rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800">← Prev</button>
+          <button type="button" onClick={nextMonth} className="rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800">Next →</button>
         </div>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div className="grid grid-cols-7 border-b border-zinc-200 dark:border-zinc-800">
           {DAY_NAMES.map((day) => (
-            <div
-              key={day}
-              className="border-r border-zinc-200 py-2 text-center text-xs font-medium text-zinc-500 last:border-r-0 dark:border-zinc-800 dark:text-zinc-400"
-            >
-              {day}
-            </div>
+            <div key={day} className="border-r border-zinc-200 py-2 text-center text-xs font-medium text-zinc-500 last:border-r-0 dark:border-zinc-800 dark:text-zinc-400">{day}</div>
           ))}
         </div>
+
         <div className="grid grid-cols-7">
           {cells.map((cell, i) => {
-            if (cell.date === null) {
-              return <div key={`empty-${i}`} className="min-h-[4rem] border-r border-b border-zinc-100 bg-zinc-50/50 last:border-r-0 dark:border-zinc-800 dark:bg-zinc-950/50" />;
+            if (!cell.date) {
+              return <div key={`empty-${i}`} className="min-h-[5rem] border-r border-b border-zinc-100 bg-zinc-50/40 last:border-r-0 dark:border-zinc-800 dark:bg-zinc-950/30" />;
             }
-            const hasPlan = planSet.has(cell.date);
+
+            const meta = dayMeta[cell.date] ?? { external: 0, classes: 0, fixedHabits: 0, generated: 0 };
             const isToday = cell.date === today;
+            const isSelected = cell.date === selectedDate;
+
             return (
               <Link
                 key={cell.date}
-                href={`/today?date=${cell.date}`}
-                className={`flex min-h-[4rem] flex-col border-r border-b border-zinc-100 p-2 transition-colors last:border-r-0 hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-800 ${
-                  isToday ? "bg-amber-50 dark:bg-amber-950/30" : "bg-white dark:bg-zinc-900"
+                href={`/calendar?year=${year}&month=${month}&date=${cell.date}`}
+                className={`flex min-h-[5rem] flex-col border-r border-b border-zinc-100 p-2 transition-colors last:border-r-0 hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-800 ${
+                  isSelected ? "bg-zinc-100 dark:bg-zinc-800" : isToday ? "bg-amber-50 dark:bg-amber-950/20" : "bg-white dark:bg-zinc-900"
                 }`}
               >
-                <span className={`text-sm font-medium ${isToday ? "text-amber-700 dark:text-amber-400" : "text-zinc-700 dark:text-zinc-300"}`}>
-                  {cell.label}
-                </span>
-                {hasPlan && (
-                  <span className="mt-1 flex gap-0.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  </span>
-                )}
+                <span className={`text-sm font-medium ${isToday ? "text-amber-700 dark:text-amber-400" : "text-zinc-700 dark:text-zinc-300"}`}>{cell.label}</span>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {meta.external > 0 && <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />}
+                  {meta.classes > 0 && <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />}
+                  {meta.fixedHabits > 0 && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+                  {meta.generated > 0 && <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />}
+                </div>
               </Link>
             );
           })}

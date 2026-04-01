@@ -1,78 +1,51 @@
-import Link from "next/link";
+import { DashboardPlanner } from "@/components/DashboardPlanner";
 import { createClient } from "@/lib/supabase/server";
+
+function sunday(date: Date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - d.getDay());
+  return d;
+}
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const [planRes, assignmentsRes] = await Promise.all([
-    supabase.from("daily_plans").select("plan_json").eq("date", today).single(),
-    supabase.from("assignments").select("id, title, due_date, status").order("due_date", { ascending: true }).limit(5),
+  const currentWeek = sunday(new Date()).toISOString().slice(0, 10);
+
+  const [extRes, classRes, assignRes, planRes] = await Promise.all([
+    supabase.from("external_events").select("id", { count: "exact", head: true }).eq("user_id", user?.id),
+    supabase.from("class_sections").select("id", { count: "exact", head: true }).eq("user_id", user?.id),
+    supabase.from("assignments").select("estimated_minutes,remaining_minutes").eq("user_id", user?.id),
+    supabase.from("weekly_plans").select("id").eq("user_id", user?.id).eq("week_start_date", currentWeek).single(),
   ]);
 
-  const plan = planRes.data?.plan_json as { blocks?: { start: string; end: string; label: string }[] } | null;
-  const assignments = assignmentsRes.data ?? [];
+  const totalEstimated = (assignRes.data ?? []).reduce((sum, a) => sum + Number(a.estimated_minutes || 0), 0);
+  const totalRemaining = (assignRes.data ?? []).reduce((sum, a) => sum + Number(a.remaining_minutes || 0), 0);
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-        Dashboard
-      </h1>
+    <div className="space-y-6 animate-in">
+      <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Dashboard</h1>
 
-      <section className="animate-in" style={{ animationDelay: "50ms" }}>
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-zinc-800 dark:text-zinc-200">
-            Today&apos;s plan
-          </h2>
-          <Link
-            href="/today"
-            className="text-sm font-medium text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-          >
-            View / Generate →
-          </Link>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Imported events</p>
+          <p className="mt-1 text-xl font-semibold text-zinc-800 dark:text-zinc-200">{extRes.count ?? 0}</p>
         </div>
-        {plan?.blocks?.length ? (
-          <ul className="mt-2 space-y-1.5 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition-shadow dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-none">
-            {plan.blocks.slice(0, 5).map((b, i) => (
-              <li key={i} className="text-sm text-zinc-700 dark:text-zinc-300">
-                {b.start}–{b.end} — {b.label}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-            No plan for today. Generate one on the Today page.
-          </p>
-        )}
-      </section>
+        <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Classes</p>
+          <p className="mt-1 text-xl font-semibold text-zinc-800 dark:text-zinc-200">{classRes.count ?? 0}</p>
+        </div>
+        <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Assignment hours planned</p>
+          <p className="mt-1 text-xl font-semibold text-zinc-800 dark:text-zinc-200">{Math.max(0, (totalEstimated - totalRemaining) / 60).toFixed(1)}h</p>
+        </div>
+      </div>
 
-      <section className="animate-in" style={{ animationDelay: "100ms" }}>
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-zinc-800 dark:text-zinc-200">
-            Upcoming assignments
-          </h2>
-          <Link
-            href="/assignments"
-            className="text-sm font-medium text-zinc-600 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-          >
-            All assignments →
-          </Link>
-        </div>
-        {assignments.length ? (
-          <ul className="mt-2 space-y-2 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm transition-shadow dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-none">
-            {assignments.map((a) => (
-              <li key={a.id} className="flex justify-between text-sm">
-                <span className="text-zinc-700 dark:text-zinc-300">{a.title}</span>
-                <span className="text-zinc-500 dark:text-zinc-400">{a.due_date}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-            No assignments yet. Add some in Assignments.
-          </p>
-        )}
-      </section>
+      <DashboardPlanner currentWeek={currentWeek} hasCurrentPlan={!!planRes.data} />
     </div>
   );
 }

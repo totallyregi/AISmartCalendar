@@ -1,22 +1,23 @@
 import { createClient } from "@/lib/supabase/server";
-import Link from "next/link";
 import { ClassList } from "@/components/ClassList";
+import type { ClassSection } from "@/lib/types";
 
 export default async function ClassesPage() {
   const supabase = await createClient();
-  const { data: classes } = await supabase.from("classes").select("*").order("name");
+  const { data } = await supabase
+    .from("class_sections")
+    .select("id,user_id,class_code,class_name,created_at,class_meetings(id,day_of_week,start_time,end_time)")
+    .order("class_code");
+
+  const classes = (data ?? []) as unknown as ClassSection[];
 
   return (
     <div className="space-y-6 animate-in">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-          My classes
-        </h1>
-        <ClassList classes={classes ?? []} />
-      </div>
-      {(!classes || classes.length === 0) && (
+      <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Classes</h1>
+      <ClassList classes={classes} />
+      {classes.length === 0 && (
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          Add a class to get started. Include schedule (e.g. Mon/Wed 10am).
+          Add class code, class name, and weekly meeting times in 15-minute intervals.
         </p>
       )}
     </div>

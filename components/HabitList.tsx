@@ -1,81 +1,81 @@
 "use client";
 
 import { useState } from "react";
-import type { Habit } from "@/lib/types";
 import { HabitForm } from "./HabitForm";
 
-export function HabitList({ habits }: { habits: Habit[] }) {
-  const [editing, setEditing] = useState<Habit | null>(null);
+type HabitRow = {
+  id: string;
+  name: string;
+  type: "fixed" | "flexible";
+  active: boolean;
+  habit_fixed_slots?: { day_of_week: number; start_time: string; end_time: string }[];
+  habit_flexible_rules?: { duration_minutes: number; preferred_days: number[]; times_per_week: number | null }[];
+};
+
+const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+export function HabitList({ habits }: { habits: HabitRow[] }) {
+  const [editing, setEditing] = useState<HabitRow | null>(null);
   const [adding, setAdding] = useState(false);
 
   return (
     <div className="space-y-4">
-      <button
-        type="button"
-        onClick={() => { setAdding(true); setEditing(null); }}
-        className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-      >
+      <button type="button" onClick={() => { setAdding(true); setEditing(null); }} className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900">
         Add habit
       </button>
 
       {(adding || editing) && (
-        <HabitForm
-          habit={editing ?? undefined}
-          onClose={() => { setAdding(false); setEditing(null); }}
-          onSaved={() => { setAdding(false); setEditing(null); window.location.reload(); }}
-        />
+        <HabitForm habit={editing ?? undefined} onClose={() => { setAdding(false); setEditing(null); }} onSaved={() => window.location.reload()} />
       )}
 
       <ul className="space-y-2">
-        {habits.map((h) => (
-          <li
-            key={h.id}
-            className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
-          >
-            <div>
-              <p className="font-medium text-zinc-900 dark:text-zinc-100">{h.name}</p>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                {h.typical_duration_min} min
-                {h.preferred_time ? ` · Prefer ${h.preferred_time}` : ""}
-                {!h.active ? " · Inactive" : ""}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={async () => {
-                  await fetch(`/api/habits/${h.id}`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ ...h, active: !h.active }),
-                  });
-                  window.location.reload();
-                }}
-                className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-              >
-                {h.active ? "Pause" : "Resume"}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setEditing(h); setAdding(false); }}
-                className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  if (!confirm("Delete this habit?")) return;
-                  await fetch(`/api/habits/${h.id}`, { method: "DELETE" });
-                  window.location.reload();
-                }}
-                className="text-sm text-red-600 hover:text-red-700 dark:text-red-400"
-              >
-                Delete
-              </button>
-            </div>
-          </li>
-        ))}
+        {habits.map((h) => {
+          const flex = h.habit_flexible_rules?.[0];
+          return (
+            <li key={h.id} className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="font-medium text-zinc-900 dark:text-zinc-100">{h.name}</p>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                    {h.type === "fixed"
+                      ? (h.habit_fixed_slots ?? []).map((s) => `${dayNames[s.day_of_week]} ${s.start_time.slice(0,5)}-${s.end_time.slice(0,5)}`).join(" · ") || "No fixed slots"
+                      : `${flex?.duration_minutes ?? 0} min` +
+                        `${flex?.times_per_week ? ` · ${flex.times_per_week}x/week` : ""}` +
+                        `${flex?.preferred_days?.length ? ` · days: ${flex.preferred_days.map((d) => dayNames[d]).join(", ")}` : ""}`}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await fetch(`/api/habits/${h.id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ ...h, active: !h.active }),
+                      });
+                      window.location.reload();
+                    }}
+                    className="text-sm text-zinc-600 dark:text-zinc-400"
+                  >
+                    {h.active ? "Pause" : "Resume"}
+                  </button>
+                  <button type="button" onClick={() => { setEditing(h); setAdding(false); }} className="text-sm text-zinc-600 dark:text-zinc-400">Edit</button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!confirm("Delete this habit?")) return;
+                      await fetch(`/api/habits/${h.id}`, { method: "DELETE" });
+                      window.location.reload();
+                    }}
+                    className="text-sm text-red-600"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
