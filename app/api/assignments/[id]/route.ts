@@ -20,7 +20,7 @@ export async function PUT(
   if (typeof body.remaining_minutes === "number") updates.remaining_minutes = body.remaining_minutes;
   if (["not_started", "in_progress", "done"].includes(body.status)) updates.status = body.status;
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("assignments")
     .update(updates)
     .eq("id", id)
@@ -28,8 +28,25 @@ export async function PUT(
     .select()
     .single();
 
+  // Backward-compat: keep legacy `title` in sync when required.
+  if (error?.message?.includes("null value in column \"title\"") || error?.message?.includes("column \"title\"")) {
+    const retryUpdates = { ...updates } as Record<string, unknown>;
+    if (typeof body.name === "string") retryUpdates.title = body.name;
+    ({ data, error } = await supabase
+      .from("assignments")
+      .update(retryUpdates)
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .select()
+      .single());
+  }
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+  const out = data as Record<string, unknown>;
+  if (typeof out?.name !== "string" && typeof out?.title === "string") {
+    return NextResponse.json({ ...out, name: out.title });
+  }
+  return NextResponse.json(out);
 }
 
 export async function DELETE(

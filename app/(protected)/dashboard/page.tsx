@@ -23,7 +23,14 @@ type TimelineEvent = {
   ends_at: string;
   title: string;
   source: "external" | "class" | "fixed_habit" | "generated" | "personal";
+  class_meeting_id?: string;
+  class_id?: string;
 };
+
+function toDateTimeLocalIso(date: Date, hhmmss: string) {
+  const d = date.toISOString().slice(0, 10);
+  return new Date(`${d}T${hhmmss}`).toISOString();
+}
 
 export default async function DashboardPage({
   searchParams,
@@ -42,15 +49,26 @@ export default async function DashboardPage({
   const selectedDate = params.date ?? now.toISOString().slice(0, 10);
   const currentWeek = sunday(now).toISOString().slice(0, 10);
 
-  const monthStart = new Date(year, month - 1, 1).toISOString();
-  const monthEnd = new Date(year, month, 0, 23, 59, 59).toISOString();
+  const monthStart = new Date(year, month - 1, 1);
+  const monthEnd = new Date(year, month, 0, 23, 59, 59);
+  const startIso = monthStart.toISOString();
+  const endIso = monthEnd.toISOString();
 
-  const [extRes, classRes, assignRes, planRes, draftRes] = await Promise.all([
-    supabase.from("external_events").select("id,starts_at,ends_at,summary", { count: "exact" }).eq("user_id", user?.id).gte("starts_at", monthStart).lte("starts_at", monthEnd),
-    supabase.from("class_sections").select("id,class_code,class_name,class_meetings(day_of_week,start_time,end_time)", { count: "exact" }).eq("user_id", user?.id),
+  const [extRes, classRes, habitRes, appliedRes, userEventRes, overrideRes, assignRes, planRes, draftRes] = await Promise.all([
+    supabase.from("external_events").select("id,starts_at,ends_at,summary", { count: "exact" }).eq("user_id", user?.id).gte("starts_at", startIso).lte("starts_at", endIso),
+    supabase.from("class_sections").select("id,class_code,class_name,class_meetings(id,day_of_week,start_time,end_time)", { count: "exact" }).eq("user_id", user?.id),
+    supabase.from("habits").select("id,name,habit_fixed_slots(id,day_of_week,start_time,end_time)").eq("user_id", user?.id).eq("type", "fixed"),
+    supabase.from("weekly_plan_blocks").select("id,starts_at,ends_at,title,origin").eq("user_id", user?.id).eq("origin", "applied").gte("starts_at", startIso).lte("starts_at", endIso),
+    supabase.from("user_events").select("id,starts_at,ends_at,title").eq("user_id", user?.id).gte("starts_at", startIso).lte("starts_at", endIso),
+    supabase
+      .from("class_meeting_overrides")
+      .select("id,class_meeting_id,override_date,canceled,override_start_time,override_end_time")
+      .eq("user_id", user?.id)
+      .gte("override_date", startIso.slice(0, 10))
+      .lte("override_date", endIso.slice(0, 10)),
     supabase.from("assignments").select("estimated_minutes,remaining_minutes").eq("user_id", user?.id),
     supabase.from("weekly_plans").select("id").eq("user_id", user?.id).eq("week_start_date", currentWeek).single(),
-    supabase.from("ai_draft_blocks").select("id,starts_at,ends_at,title,block_type,applied").eq("user_id", user?.id).eq("applied", false).gte("starts_at", monthStart).lte("starts_at", monthEnd),
+    supabase.from("ai_draft_blocks").select("id,starts_at,ends_at,title,block_type,applied").eq("user_id", user?.id).eq("applied", false).gte("starts_at", startIso).lte("starts_at", endIso),
   ]);
 
   const totalEstimated = (assignRes.data ?? []).reduce((sum, a) => sum + Number(a.estimated_minutes || 0), 0);
@@ -58,6 +76,15 @@ export default async function DashboardPage({
 
   const metaByDate: Record<string, DayMeta> = {};
   const events: TimelineEvent[] = [];
+  const overrideByMeetingDate = new Map<string, { canceled: boolean; start?: string; end?: string }>();
+
+  (overrideRes.data ?? []).forEach((o) => {
+    overrideByMeetingDate.set(`${o.class_meeting_id}_${o.override_date}`, {
+      canceled: Boolean(o.canceled),
+      start: o.override_start_time ?? undefined,
+      end: o.override_end_time ?? undefined,
+    });
+  });
   const ensure = (d: string) => {
     if (!metaByDate[d]) metaByDate[d] = { external: 0, classes: 0, fixedHabits: 0, generated: 0, personal: 0 };
     return metaByDate[d];
@@ -76,19 +103,66 @@ export default async function DashboardPage({
     const dow = dt.getDay();
 
     (classRes.data ?? []).forEach((c) => {
-      (c.class_meetings ?? []).forEach((m: { day_of_week: number; start_time: string; end_time: string }) => {
+      (c.class_meetings ?? []).forEach((m: { id: string; day_of_week: number; start_time: string; end_time: string }) => {
         if (m.day_of_week !== dow) return;
+
+        const ov = overrideByMeetingDate.get(`${m.id}_${d}`);
+        if (ov?.canceled) return;
+        const startTime = ov?.start ?? m.start_time;
+        const endTime = ov?.end ?? m.end_time;
+
         ensure(d).classes += 1;
         events.push({
-          id: `${c.id}_${d}_${m.start_time}`,
-          starts_at: `${d}T${m.start_time}`,
-          ends_at: `${d}T${m.end_time}`,
+          id: m.id,
+          starts_at: toDateTimeLocalIso(dt, startTime),
+          ends_at: toDateTimeLocalIso(dt, endTime),
           title: `${c.class_code} ${c.class_name}`,
           source: "class",
+          class_meeting_id: m.id,
+          class_id: c.id as string,
         });
       });
     });
+
+    (habitRes.data ?? []).forEach((h) => {
+      (h.habit_fixed_slots ?? []).forEach((s: { id: string; day_of_week: number; start_time: string; end_time: string }) => {
+        if (s.day_of_week === dow) {
+          ensure(d).fixedHabits += 1;
+          events.push({
+            id: s.id,
+            starts_at: toDateTimeLocalIso(dt, s.start_time),
+            ends_at: toDateTimeLocalIso(dt, s.end_time),
+            title: h.name as string,
+            source: "fixed_habit",
+          });
+        }
+      });
+    });
   }
+
+  (appliedRes.data ?? []).forEach((b) => {
+    const d = dateOnly(b.starts_at as string);
+    ensure(d).generated += 1;
+    events.push({
+      id: b.id as string,
+      starts_at: b.starts_at as string,
+      ends_at: b.ends_at as string,
+      title: b.title as string,
+      source: "generated",
+    });
+  });
+
+  (userEventRes.data ?? []).forEach((e) => {
+    const d = dateOnly(e.starts_at as string);
+    ensure(d).personal += 1;
+    events.push({
+      id: e.id as string,
+      starts_at: e.starts_at as string,
+      ends_at: e.ends_at as string,
+      title: e.title as string,
+      source: "personal",
+    });
+  });
 
   (draftRes.data ?? []).forEach((b) => {
     const d = dateOnly(b.starts_at as string);
