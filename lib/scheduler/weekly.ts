@@ -48,3 +48,22 @@ export function mergeIntervals(list: Interval[]) {
   }
   return out;
 }
+
+export function toDateTime(day: Date, hhmmss: string) {
+  const d = new Date(day);
+  const [h, m, s] = hhmmss.split(":").map((n) => Number(n));
+  d.setHours(h || 0, m || 0, s || 0, 0);
+  return d;
+}
+
+export function minutesBetween(start: Date, end: Date) {
+  return Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
+}
+
+export function dayDateKey(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
+export function blocksToIntervals(blocks: { starts_at: string; ends_at: string }[]) {
+  return blocks.map((b) => ({ start: new Date(b.starts_at), end: new Date(b.ends_at) }));
+}

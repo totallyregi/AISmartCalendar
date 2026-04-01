@@ -1,5 +1,6 @@
 export type AssignmentStatus = "not_started" | "in_progress" | "done";
 export type HabitType = "fixed" | "flexible";
+export type SchedulerMode = "intense" | "relaxed" | "lazy";
 
 export interface ClassMeeting {
   id?: string;
@@ -62,4 +63,23 @@ export interface WeeklyPlanBlock {
   assignment_id?: string | null;
   habit_id?: string | null;
   planned_minutes?: number;
+}
+
+export interface SchedulerPreference {
+  id?: string;
+  user_id?: string;
+  min_daily_minutes: number;
+  preferred_daily_minutes: number;
+  max_daily_minutes: number;
+  max_consecutive_minutes: number;
+  break_minutes: number;
+  default_apply_days: number[];
+}
+
+export interface SchedulerPreferredWindow {
+  id?: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  is_override: boolean;
 }

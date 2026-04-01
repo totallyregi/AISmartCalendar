@@ -187,6 +187,35 @@ create table if not exists public.class_meeting_overrides (
   unique(class_meeting_id, override_date)
 );
 
+create table if not exists public.scheduler_preferences (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null unique references auth.users(id) on delete cascade,
+  min_daily_minutes int not null default 120 check (min_daily_minutes >= 0 and min_daily_minutes % 15 = 0),
+  preferred_daily_minutes int not null default 180 check (preferred_daily_minutes >= 0 and preferred_daily_minutes % 15 = 0),
+  max_daily_minutes int not null default 300 check (max_daily_minutes > 0 and max_daily_minutes % 15 = 0),
+  max_consecutive_minutes int not null default 120 check (max_consecutive_minutes > 0 and max_consecutive_minutes % 15 = 0),
+  break_minutes int not null default 30 check (break_minutes >= 0 and break_minutes % 15 = 0),
+  default_apply_days smallint[] not null default '{1,2,3,4,5}',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (min_daily_minutes <= preferred_daily_minutes),
+  check (preferred_daily_minutes <= max_daily_minutes)
+);
+
+create table if not exists public.scheduler_preferred_windows (
+  id uuid primary key default gen_random_uuid(),
+  preference_id uuid not null references public.scheduler_preferences(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  day_of_week smallint not null check (day_of_week >= 0 and day_of_week <= 6),
+  start_time time not null,
+  end_time time not null,
+  is_override boolean not null default false,
+  created_at timestamptz not null default now(),
+  check (end_time > start_time),
+  check (extract(minute from start_time)::int % 15 = 0),
+  check (extract(minute from end_time)::int % 15 = 0)
+);
+
 alter table public.profiles enable row level security;
 alter table public.class_sections enable row level security;
 alter table public.class_meetings enable row level security;
@@ -201,6 +230,8 @@ alter table public.weekly_plan_blocks enable row level security;
 alter table public.ai_draft_blocks enable row level security;
 alter table public.user_events enable row level security;
 alter table public.class_meeting_overrides enable row level security;
+alter table public.scheduler_preferences enable row level security;
+alter table public.scheduler_preferred_windows enable row level security;
 
 drop policy if exists "Users can read own profile" on public.profiles;
 drop policy if exists "Users can update own profile" on public.profiles;
@@ -225,6 +256,10 @@ create policy "Users can CRUD own weekly blocks" on public.weekly_plan_blocks fo
 create policy "Users can CRUD own AI draft blocks" on public.ai_draft_blocks for all using (auth.uid() = user_id);
 create policy "Users can CRUD own user events" on public.user_events for all using (auth.uid() = user_id);
 create policy "Users can CRUD own class meeting overrides" on public.class_meeting_overrides for all using (auth.uid() = user_id);
+drop policy if exists "Users can CRUD own scheduler preferences" on public.scheduler_preferences;
+drop policy if exists "Users can CRUD own scheduler windows" on public.scheduler_preferred_windows;
+create policy "Users can CRUD own scheduler preferences" on public.scheduler_preferences for all using (auth.uid() = user_id);
+create policy "Users can CRUD own scheduler windows" on public.scheduler_preferred_windows for all using (auth.uid() = user_id);
 
 create or replace function public.handle_new_user()
 returns trigger as $$

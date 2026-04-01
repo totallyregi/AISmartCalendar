@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { SchedulerMode } from "@/lib/types";
 
 function sundayStart(date: Date) {
   const d = new Date(date);
@@ -23,6 +24,7 @@ export function DashboardPlanner({
   hasCurrentPlan: boolean;
 }) {
   const [weekStart, setWeekStart] = useState(currentWeek);
+  const [mode, setMode] = useState<SchedulerMode>("relaxed");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +58,7 @@ export function DashboardPlanner({
     const res = await fetch("/api/plans/weekly/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ weekStart }),
+      body: JSON.stringify({ weekStart, mode }),
     });
     const data = await res.json().catch(() => ({}));
     setLoading(false);
@@ -65,7 +67,7 @@ export function DashboardPlanner({
       return;
     }
     const hours = Number(data.assignmentMinutes ?? 0) / 60;
-    setMessage(`Generated ${data.blocks ?? 0} suggested blocks (${hours.toFixed(1)}h assignment time) for week ${data.weekStart}`);
+    setMessage(`Generated ${data.blocks ?? 0} suggested blocks (${hours.toFixed(1)}h assignment time) for week ${data.weekStart} in ${data.mode ?? mode} mode`);
     await loadDraft();
   }
 
@@ -104,6 +106,12 @@ export function DashboardPlanner({
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Week start (Sunday)</label>
             <select value={weekStart} onChange={(e) => setWeekStart(e.target.value)} className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">
               {weekOptions.map((w) => <option key={w} value={w}>{w}</option>)}
+            </select>
+            <label className="mt-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Mode</label>
+            <select value={mode} onChange={(e) => setMode(e.target.value as SchedulerMode)} className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">
+              <option value="intense">Intense (finish faster)</option>
+              <option value="relaxed">Relaxed (target preferred hours)</option>
+              <option value="lazy">Lazy (minimum daily effort)</option>
             </select>
           </div>
           <div className="flex items-end">
