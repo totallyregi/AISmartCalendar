@@ -187,5 +187,9 @@ export async function POST(request: Request) {
     if (draftErr) return NextResponse.json({ error: draftErr.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, weekStart: weekStartDate, blocks: blocks.length });
+  const assignmentMinutes = blocks
+    .filter((b) => b.block_type === "assignment")
+    .reduce((sum, b) => sum + Math.round((new Date(b.ends_at).getTime() - new Date(b.starts_at).getTime()) / 60000), 0);
+
+  return NextResponse.json({ ok: true, weekStart: weekStartDate, blocks: blocks.length, assignmentMinutes });
 }

@@ -1,15 +1,7 @@
-import { DashboardPlanner } from "@/components/DashboardPlanner";
 import { CalendarLegend } from "@/components/CalendarLegend";
 import { CalendarView } from "@/components/CalendarView";
 import { WeekTimeline } from "@/components/WeekTimeline";
 import { createClient } from "@/lib/supabase/server";
-
-function sunday(date: Date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - d.getDay());
-  return d;
-}
 
 function dateOnly(value: string) {
   return value.slice(0, 10);
@@ -23,8 +15,6 @@ type TimelineEvent = {
   ends_at: string;
   title: string;
   source: "external" | "class" | "fixed_habit" | "generated" | "personal";
-  class_meeting_id?: string;
-  class_id?: string;
 };
 
 function toDateTimeLocalIso(date: Date, hhmmss: string) {
@@ -47,16 +37,15 @@ export default async function DashboardPage({
   const year = params.year ? Number(params.year) : now.getFullYear();
   const month = params.month ? Number(params.month) : now.getMonth() + 1;
   const selectedDate = params.date ?? now.toISOString().slice(0, 10);
-  const currentWeek = sunday(now).toISOString().slice(0, 10);
 
   const monthStart = new Date(year, month - 1, 1);
   const monthEnd = new Date(year, month, 0, 23, 59, 59);
   const startIso = monthStart.toISOString();
   const endIso = monthEnd.toISOString();
 
-  const [extRes, classRes, habitRes, appliedRes, userEventRes, overrideRes, assignRes, planRes, draftRes] = await Promise.all([
-    supabase.from("external_events").select("id,starts_at,ends_at,summary", { count: "exact" }).eq("user_id", user?.id).gte("starts_at", startIso).lte("starts_at", endIso),
-    supabase.from("class_sections").select("id,class_code,class_name,class_meetings(id,day_of_week,start_time,end_time)", { count: "exact" }).eq("user_id", user?.id),
+  const [extRes, classRes, habitRes, appliedRes, userEventRes, overrideRes, draftRes] = await Promise.all([
+    supabase.from("external_events").select("id,starts_at,ends_at,summary").eq("user_id", user?.id).gte("starts_at", startIso).lte("starts_at", endIso),
+    supabase.from("class_sections").select("id,class_code,class_name,class_meetings(id,day_of_week,start_time,end_time)").eq("user_id", user?.id),
     supabase.from("habits").select("id,name,habit_fixed_slots(id,day_of_week,start_time,end_time)").eq("user_id", user?.id).eq("type", "fixed"),
     supabase.from("weekly_plan_blocks").select("id,starts_at,ends_at,title,origin").eq("user_id", user?.id).eq("origin", "applied").gte("starts_at", startIso).lte("starts_at", endIso),
     supabase.from("user_events").select("id,starts_at,ends_at,title").eq("user_id", user?.id).gte("starts_at", startIso).lte("starts_at", endIso),
@@ -66,13 +55,8 @@ export default async function DashboardPage({
       .eq("user_id", user?.id)
       .gte("override_date", startIso.slice(0, 10))
       .lte("override_date", endIso.slice(0, 10)),
-    supabase.from("assignments").select("estimated_minutes,remaining_minutes").eq("user_id", user?.id),
-    supabase.from("weekly_plans").select("id").eq("user_id", user?.id).eq("week_start_date", currentWeek).single(),
     supabase.from("ai_draft_blocks").select("id,starts_at,ends_at,title,block_type,applied").eq("user_id", user?.id).eq("applied", false).gte("starts_at", startIso).lte("starts_at", endIso),
   ]);
-
-  const totalEstimated = (assignRes.data ?? []).reduce((sum, a) => sum + Number(a.estimated_minutes || 0), 0);
-  const totalRemaining = (assignRes.data ?? []).reduce((sum, a) => sum + Number(a.remaining_minutes || 0), 0);
 
   const metaByDate: Record<string, DayMeta> = {};
   const events: TimelineEvent[] = [];
@@ -85,6 +69,7 @@ export default async function DashboardPage({
       end: o.override_end_time ?? undefined,
     });
   });
+
   const ensure = (d: string) => {
     if (!metaByDate[d]) metaByDate[d] = { external: 0, classes: 0, fixedHabits: 0, generated: 0, personal: 0 };
     return metaByDate[d];
@@ -105,7 +90,6 @@ export default async function DashboardPage({
     (classRes.data ?? []).forEach((c) => {
       (c.class_meetings ?? []).forEach((m: { id: string; day_of_week: number; start_time: string; end_time: string }) => {
         if (m.day_of_week !== dow) return;
-
         const ov = overrideByMeetingDate.get(`${m.id}_${d}`);
         if (ov?.canceled) return;
         const startTime = ov?.start ?? m.start_time;
@@ -113,13 +97,11 @@ export default async function DashboardPage({
 
         ensure(d).classes += 1;
         events.push({
-          id: m.id,
+          id: `${m.id}_${d}`,
           starts_at: toDateTimeLocalIso(dt, startTime),
           ends_at: toDateTimeLocalIso(dt, endTime),
           title: `${c.class_code} ${c.class_name}`,
           source: "class",
-          class_meeting_id: m.id,
-          class_id: c.id as string,
         });
       });
     });
@@ -143,25 +125,13 @@ export default async function DashboardPage({
   (appliedRes.data ?? []).forEach((b) => {
     const d = dateOnly(b.starts_at as string);
     ensure(d).generated += 1;
-    events.push({
-      id: b.id as string,
-      starts_at: b.starts_at as string,
-      ends_at: b.ends_at as string,
-      title: b.title as string,
-      source: "generated",
-    });
+    events.push({ id: b.id as string, starts_at: b.starts_at as string, ends_at: b.ends_at as string, title: b.title as string, source: "generated" });
   });
 
   (userEventRes.data ?? []).forEach((e) => {
     const d = dateOnly(e.starts_at as string);
     ensure(d).personal += 1;
-    events.push({
-      id: e.id as string,
-      starts_at: e.starts_at as string,
-      ends_at: e.ends_at as string,
-      title: e.title as string,
-      source: "personal",
-    });
+    events.push({ id: e.id as string, starts_at: e.starts_at as string, ends_at: e.ends_at as string, title: e.title as string, source: "personal" });
   });
 
   (draftRes.data ?? []).forEach((b) => {
@@ -174,26 +144,13 @@ export default async function DashboardPage({
 
   return (
     <div className="space-y-6 animate-in">
-      <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">AI Calendar</h1>
-
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">Imported events</p>
-          <p className="mt-1 text-xl font-semibold text-zinc-800 dark:text-zinc-200">{extRes.count ?? 0}</p>
-        </div>
-        <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">Classes</p>
-          <p className="mt-1 text-xl font-semibold text-zinc-800 dark:text-zinc-200">{classRes.count ?? 0}</p>
-        </div>
-        <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">Assignment hours planned</p>
-          <p className="mt-1 text-xl font-semibold text-zinc-800 dark:text-zinc-200">{Math.max(0, (totalEstimated - totalRemaining) / 60).toFixed(1)}h</p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">AI Calendar</h1>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">Suggestion view only. Generate/apply controls are in the main Calendar tab.</p>
       </div>
 
-      <DashboardPlanner currentWeek={currentWeek} hasCurrentPlan={!!planRes.data} />
       <CalendarLegend />
-      <CalendarView year={year} month={month} selectedDate={selectedDate} dayMeta={metaByDate} />
+      <CalendarView year={year} month={month} selectedDate={selectedDate} dayMeta={metaByDate} basePath="/dashboard" />
       <WeekTimeline date={selectedDate} events={selectedEvents} mode="ai" />
     </div>
   );

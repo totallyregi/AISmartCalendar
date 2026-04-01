@@ -103,7 +103,8 @@ export function DashboardPlanner({
       setError(data.error ?? "Generate failed");
       return;
     }
-    setMessage(`Generated ${data.blocks ?? 0} suggested blocks for AI Calendar (${data.weekStart})`);
+    const hours = Number(data.assignmentMinutes ?? 0) / 60;
+    setMessage(`Generated ${data.blocks ?? 0} suggested blocks (${hours.toFixed(1)}h assignment time) for week ${data.weekStart}`);
     await loadDraft();
   }
 

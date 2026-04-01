@@ -26,11 +26,13 @@ export function CalendarView({
   month,
   selectedDate,
   dayMeta,
+  basePath = "/calendar",
 }: {
   year: number;
   month: number;
   selectedDate: string;
   dayMeta: Record<string, DayMeta>;
+  basePath?: "/calendar" | "/dashboard";
 }) {
   const router = useRouter();
   const first = new Date(year, month - 1, 1);
@@ -49,13 +51,13 @@ export function CalendarView({
   function prevMonth() {
     const m = month === 1 ? 12 : month - 1;
     const y = month === 1 ? year - 1 : year;
-    router.push(`/calendar?year=${y}&month=${m}`);
+    router.push(`${basePath}?year=${y}&month=${m}`);
   }
 
   function nextMonth() {
     const m = month === 12 ? 1 : month + 1;
     const y = month === 12 ? year + 1 : year;
-    router.push(`/calendar?year=${y}&month=${m}`);
+    router.push(`${basePath}?year=${y}&month=${m}`);
   }
 
   return (
@@ -90,7 +92,7 @@ export function CalendarView({
             return (
               <Link
                 key={cell.date}
-                href={`/calendar?year=${year}&month=${month}&date=${cell.date}`}
+                href={`${basePath}?year=${year}&month=${month}&date=${cell.date}`}
                 className={`flex min-h-[5rem] flex-col border-r border-b border-zinc-100 p-2 transition-colors last:border-r-0 hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-800 ${
                   isSelected ? "bg-zinc-100 dark:bg-zinc-800" : isToday ? "bg-amber-50 dark:bg-amber-950/20" : "bg-white dark:bg-zinc-900"
                 }`}
