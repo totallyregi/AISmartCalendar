@@ -26,8 +26,6 @@ export function DashboardPlanner({
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [googleConnected, setGoogleConnected] = useState(false);
-  const [googleEmail, setGoogleEmail] = useState<string | null>(null);
   const [draftBlocks, setDraftBlocks] = useState<Block[]>([]);
 
   const weekOptions = useMemo(() => {
@@ -41,13 +39,6 @@ export function DashboardPlanner({
     return out;
   }, [currentWeek]);
 
-  async function refreshGoogleStatus() {
-    const res = await fetch("/api/integrations/google/status");
-    const data = await res.json().catch(() => ({}));
-    setGoogleConnected(!!data.connected);
-    setGoogleEmail(data.accountEmail ?? null);
-  }
-
   async function loadDraft() {
     const res = await fetch(`/api/plans/weekly?weekStart=${weekStart}`);
     const data = await res.json().catch(() => ({}));
@@ -55,38 +46,8 @@ export function DashboardPlanner({
   }
 
   useEffect(() => {
-    refreshGoogleStatus();
-  }, []);
-
-  useEffect(() => {
     loadDraft();
   }, [weekStart]);
-
-  function connectGoogle() {
-    window.location.href = "/api/integrations/google/connect";
-  }
-
-  async function disconnectGoogle() {
-    setLoading(true);
-    await fetch("/api/integrations/google/disconnect", { method: "POST" });
-    await refreshGoogleStatus();
-    setLoading(false);
-    setMessage("Google calendar disconnected");
-  }
-
-  async function syncGoogle() {
-    setLoading(true);
-    setError(null);
-    setMessage(null);
-    const res = await fetch("/api/integrations/google/sync", { method: "POST" });
-    const data = await res.json().catch(() => ({}));
-    setLoading(false);
-    if (!res.ok) {
-      setError(data.error ?? "Sync failed");
-      return;
-    }
-    setMessage(`Google sync complete (${data.imported ?? 0} events)`);
-  }
 
   async function generateWeek() {
     setLoading(true);
@@ -135,30 +96,6 @@ export function DashboardPlanner({
           Generate in AI Calendar first, then apply to your main Calendar when ready.
         </p>
       </div>
-
-      <section className="space-y-2 rounded-lg border border-zinc-200/80 p-3 dark:border-zinc-700/80">
-        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Connection</p>
-        <div className="flex flex-wrap items-center gap-2">
-          {!googleConnected ? (
-            <button type="button" onClick={connectGoogle} className="rounded bg-zinc-900 px-3 py-2 text-sm text-white dark:bg-zinc-100 dark:text-zinc-900">
-              Connect Google Calendar
-            </button>
-          ) : (
-            <button type="button" disabled className="cursor-default rounded bg-emerald-600 px-3 py-2 text-sm text-white">
-              Google Calendar Connected
-            </button>
-          )}
-          <button type="button" onClick={syncGoogle} disabled={loading || !googleConnected} className="rounded border border-zinc-300 px-3 py-2 text-sm disabled:opacity-50 dark:border-zinc-600">
-            Sync now
-          </button>
-          {googleConnected && (
-            <button type="button" onClick={disconnectGoogle} disabled={loading} className="rounded border border-red-300 px-3 py-2 text-sm text-red-600 dark:border-red-700 dark:text-red-400">
-              Disconnect
-            </button>
-          )}
-          {googleEmail && <span className="text-xs text-zinc-500 dark:text-zinc-400">{googleEmail}</span>}
-        </div>
-      </section>
 
       <section className="space-y-2 rounded-lg border border-zinc-200/80 p-3 dark:border-zinc-700/80">
         <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Generate suggestions</p>

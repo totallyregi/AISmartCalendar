@@ -3,6 +3,7 @@ import { CalendarLegend } from "@/components/CalendarLegend";
 import { CalendarView } from "@/components/CalendarView";
 import { WeekTimeline } from "@/components/WeekTimeline";
 import { PersonalEventForm } from "@/components/PersonalEventForm";
+import { CalendarConnectionCard } from "@/components/CalendarConnectionCard";
 
 type DayMeta = { external: number; classes: number; fixedHabits: number; generated: number; personal: number };
 type TimelineEvent = {
@@ -189,6 +190,19 @@ export default async function CalendarPage({
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Calendar</h1>
         <p className="text-sm text-zinc-500 dark:text-zinc-400">Your fixed calendar (imported events, classes, habits, personal events, and applied AI changes).</p>
       </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Imported events</p>
+          <p className="mt-1 text-xl font-semibold text-zinc-800 dark:text-zinc-200">{extRes.count ?? 0}</p>
+        </div>
+        <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Classes</p>
+          <p className="mt-1 text-xl font-semibold text-zinc-800 dark:text-zinc-200">{classRes.count ?? 0}</p>
+        </div>
+      </div>
+
+      <CalendarConnectionCard />
 
       <div className="flex items-center justify-between gap-3">
         <CalendarLegend />
