@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   const cookieState = cookieStore.get("google_oauth_state")?.value;
 
   if (!code || !state || !cookieState || state !== cookieState) {
-    return NextResponse.redirect(`${url.origin}/dashboard?google=error_state`);
+    return NextResponse.redirect(`${url.origin}/calendar?google=error_state`);
   }
 
   const supabase = await createClient();
@@ -46,8 +46,8 @@ export async function GET(request: Request) {
 
     if (error) throw new Error(error.message);
     cookieStore.delete("google_oauth_state");
-    return NextResponse.redirect(`${url.origin}/dashboard?google=connected`);
+    return NextResponse.redirect(`${url.origin}/calendar?google=connected`);
   } catch {
-    return NextResponse.redirect(`${url.origin}/dashboard?google=error_oauth`);
+    return NextResponse.redirect(`${url.origin}/calendar?google=error_oauth`);
   }
 }

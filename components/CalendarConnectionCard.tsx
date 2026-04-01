@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export function CalendarConnectionCard() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [connected, setConnected] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
@@ -36,6 +38,7 @@ export function CalendarConnectionCard() {
       return;
     }
     setMessage(`Google sync complete (${data.imported ?? 0} events)`);
+    router.refresh();
   }
 
   async function disconnectGoogle() {
