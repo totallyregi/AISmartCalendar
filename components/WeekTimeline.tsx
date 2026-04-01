@@ -86,7 +86,10 @@ export function WeekTimeline({ date, events, mode }: { date: string; events: Eve
 
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">{date} details</h3>
+      <div className="mb-1 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">{date} details</h3>
+        <span className="text-xs text-zinc-500 dark:text-zinc-400">{events.length} item{events.length === 1 ? "" : "s"}</span>
+      </div>
       {events.length === 0 ? (
         <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">No events for this day.</p>
       ) : (
@@ -94,7 +97,7 @@ export function WeekTimeline({ date, events, mode }: { date: string; events: Eve
           {events.map((e, idx) => (
             <li key={`${e.id}-${idx}`} className="space-y-1 rounded border border-zinc-200 p-2 dark:border-zinc-700">
               <div className="flex items-center gap-2 text-sm">
-                <span className={`rounded px-1.5 py-0.5 text-xs ${sourceCls[e.source]}`}>{e.source}</span>
+                <span className={`rounded px-1.5 py-0.5 text-xs capitalize ${sourceCls[e.source]}`}>{e.source.replace("_", " ")}</span>
                 <span className="text-zinc-700 dark:text-zinc-300">
                   {new Date(e.starts_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   {" - "}

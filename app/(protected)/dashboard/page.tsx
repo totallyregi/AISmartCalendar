@@ -1,10 +1,18 @@
 import { CalendarLegend } from "@/components/CalendarLegend";
 import { CalendarView } from "@/components/CalendarView";
 import { WeekTimeline } from "@/components/WeekTimeline";
+import { DashboardPlanner } from "@/components/DashboardPlanner";
 import { createClient } from "@/lib/supabase/server";
 
 function dateOnly(value: string) {
   return value.slice(0, 10);
+}
+
+function sunday(date: Date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - d.getDay());
+  return d;
 }
 
 type DayMeta = { external: number; classes: number; fixedHabits: number; generated: number; personal: number };
@@ -37,13 +45,14 @@ export default async function DashboardPage({
   const year = params.year ? Number(params.year) : now.getFullYear();
   const month = params.month ? Number(params.month) : now.getMonth() + 1;
   const selectedDate = params.date ?? now.toISOString().slice(0, 10);
+  const currentWeek = sunday(now).toISOString().slice(0, 10);
 
   const monthStart = new Date(year, month - 1, 1);
   const monthEnd = new Date(year, month, 0, 23, 59, 59);
   const startIso = monthStart.toISOString();
   const endIso = monthEnd.toISOString();
 
-  const [extRes, classRes, habitRes, appliedRes, userEventRes, overrideRes, draftRes] = await Promise.all([
+  const [extRes, classRes, habitRes, appliedRes, userEventRes, overrideRes, draftRes, assignRes, planRes] = await Promise.all([
     supabase.from("external_events").select("id,starts_at,ends_at,summary").eq("user_id", user?.id).gte("starts_at", startIso).lte("starts_at", endIso),
     supabase.from("class_sections").select("id,class_code,class_name,class_meetings(id,day_of_week,start_time,end_time)").eq("user_id", user?.id),
     supabase.from("habits").select("id,name,habit_fixed_slots(id,day_of_week,start_time,end_time)").eq("user_id", user?.id).eq("type", "fixed"),
@@ -56,6 +65,8 @@ export default async function DashboardPage({
       .gte("override_date", startIso.slice(0, 10))
       .lte("override_date", endIso.slice(0, 10)),
     supabase.from("ai_draft_blocks").select("id,starts_at,ends_at,title,block_type,applied").eq("user_id", user?.id).eq("applied", false).gte("starts_at", startIso).lte("starts_at", endIso),
+    supabase.from("assignments").select("estimated_minutes,remaining_minutes").eq("user_id", user?.id),
+    supabase.from("weekly_plans").select("id").eq("user_id", user?.id).eq("week_start_date", currentWeek).single(),
   ]);
 
   const metaByDate: Record<string, DayMeta> = {};
@@ -141,13 +152,35 @@ export default async function DashboardPage({
   });
 
   const selectedEvents = events.filter((e) => dateOnly(e.starts_at) === selectedDate).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  const totalEstimated = (assignRes.data ?? []).reduce((sum, a) => sum + Number(a.estimated_minutes || 0), 0);
+  const totalRemaining = (assignRes.data ?? []).reduce((sum, a) => sum + Number(a.remaining_minutes || 0), 0);
+  const draftAssignmentMinutes = (draftRes.data ?? [])
+    .filter((b) => b.block_type === "assignment")
+    .reduce((sum, b) => sum + Math.max(0, (new Date(b.ends_at as string).getTime() - new Date(b.starts_at as string).getTime()) / 60000), 0);
 
   return (
     <div className="space-y-6 animate-in">
       <div>
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">AI Calendar</h1>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">Suggestion view only. Generate/apply controls are in the main Calendar tab.</p>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">Suggested calendar workspace. Review drafts here, then choose whether to apply to main Calendar.</p>
       </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Imported events</p>
+          <p className="mt-1 text-xl font-semibold text-zinc-800 dark:text-zinc-200">{(extRes.data ?? []).length}</p>
+        </div>
+        <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Classes</p>
+          <p className="mt-1 text-xl font-semibold text-zinc-800 dark:text-zinc-200">{(classRes.data ?? []).length}</p>
+        </div>
+        <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Assignment hours planned</p>
+          <p className="mt-1 text-xl font-semibold text-zinc-800 dark:text-zinc-200">{Math.max(0, (totalEstimated - totalRemaining + draftAssignmentMinutes) / 60).toFixed(1)}h</p>
+        </div>
+      </div>
+
+      <DashboardPlanner currentWeek={currentWeek} hasCurrentPlan={!!planRes.data} />
 
       <CalendarLegend />
       <CalendarView year={year} month={month} selectedDate={selectedDate} dayMeta={metaByDate} basePath="/dashboard" />

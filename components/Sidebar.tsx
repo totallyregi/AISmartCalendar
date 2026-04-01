@@ -36,17 +36,6 @@ export function Sidebar() {
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         <Link
-          href="/dashboard"
-          className={`${baseLinkCls} ${
-            pathname === "/dashboard"
-              ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-              : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-          }`}
-        >
-          AI Calendar
-        </Link>
-
-        <Link
           href="/calendar"
           className={`${baseLinkCls} ${
             pathname === "/calendar"
@@ -55,6 +44,17 @@ export function Sidebar() {
           }`}
         >
           Calendar
+        </Link>
+
+        <Link
+          href="/dashboard"
+          className={`${baseLinkCls} ${
+            pathname === "/dashboard"
+              ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+              : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+          }`}
+        >
+          AI Calendar
         </Link>
 
         <div>
