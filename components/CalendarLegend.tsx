@@ -4,6 +4,7 @@ export function CalendarLegend() {
     { label: "Classes", color: "bg-violet-500" },
     { label: "Fixed habits", color: "bg-emerald-500" },
     { label: "Generated", color: "bg-amber-500" },
+    { label: "Personal", color: "bg-rose-500" },
   ];
 
   return (

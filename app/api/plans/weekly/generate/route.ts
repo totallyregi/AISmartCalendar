@@ -83,7 +83,6 @@ export async function POST(request: Request) {
   const blocks: { block_type: string; title: string; starts_at: string; ends_at: string; assignment_id?: string; habit_id?: string }[] = [];
   const slotUsed = new Set<number>();
 
-  // Assignment allocation: 30-min chunks before due date.
   const assignments = (assignmentRes.data ?? []) as {
     id: string;
     class_id: string;
@@ -103,8 +102,7 @@ export async function POST(request: Request) {
       const s2 = freeSlots[i + 1];
       const contiguous = s1.end.getTime() === s2.start.getTime();
       const blockEnd = contiguous ? s2.end : s1.end;
-      const blockMins = contiguous ? 30 : 15;
-      if (blockMins < 30) continue;
+      if (!contiguous) continue;
       if (s1.start >= due) continue;
 
       slotUsed.add(i);
@@ -120,7 +118,6 @@ export async function POST(request: Request) {
     }
   }
 
-  // Flexible habits allocation.
   const flexHabits = (flexHabitRes.data ?? []) as {
     id: string;
     name: string;
@@ -176,35 +173,18 @@ export async function POST(request: Request) {
 
   if (planErr || !plan) return NextResponse.json({ error: planErr?.message ?? "Failed to save weekly plan" }, { status: 500 });
 
-  await supabase.from("weekly_plan_blocks").delete().eq("weekly_plan_id", plan.id);
+  await supabase.from("ai_draft_blocks").delete().eq("user_id", user.id).eq("week_start_date", weekStartDate);
   if (blocks.length) {
-    const { error: blockErr } = await supabase.from("weekly_plan_blocks").insert(
+    const { error: draftErr } = await supabase.from("ai_draft_blocks").insert(
       blocks.map((b) => ({
-        weekly_plan_id: plan.id,
         user_id: user.id,
+        week_start_date: weekStartDate,
         ...b,
+        editable: true,
+        applied: false,
       }))
     );
-    if (blockErr) return NextResponse.json({ error: blockErr.message }, { status: 500 });
-  }
-
-  // Update assignment remaining minutes based on scheduled assignment blocks.
-  const minutesByAssignment: Record<string, number> = {};
-  for (const b of blocks) {
-    if (!b.assignment_id) continue;
-    const mins = Math.round((new Date(b.ends_at).getTime() - new Date(b.starts_at).getTime()) / 60000);
-    minutesByAssignment[b.assignment_id] = (minutesByAssignment[b.assignment_id] ?? 0) + mins;
-  }
-
-  for (const a of assignments) {
-    const used = minutesByAssignment[a.id] ?? 0;
-    if (!used) continue;
-    const nextRemaining = Math.max(0, Number(a.remaining_minutes) - used);
-    await supabase
-      .from("assignments")
-      .update({ remaining_minutes: nextRemaining, status: nextRemaining === 0 ? "done" : "in_progress" })
-      .eq("id", a.id)
-      .eq("user_id", user.id);
+    if (draftErr) return NextResponse.json({ error: draftErr.message }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true, weekStart: weekStartDate, blocks: blocks.length });

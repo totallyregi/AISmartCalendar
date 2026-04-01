@@ -20,15 +20,21 @@ export async function GET(request: Request) {
     .eq("week_start_date", weekStart)
     .single();
 
-  if (!plan) return NextResponse.json({ weekStart, plan: null, blocks: [] });
-
-  const { data: blocks, error } = await supabase
+  const { data: blocks } = await supabase
     .from("weekly_plan_blocks")
     .select("*")
-    .eq("weekly_plan_id", plan.id)
     .eq("user_id", user.id)
+    .gte("starts_at", `${weekStart}T00:00:00.000Z`)
+    .lte("starts_at", `${weekStart}T23:59:59.999Z`)
     .order("starts_at", { ascending: true });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ weekStart, plan, blocks: blocks ?? [] });
+  const { data: draftBlocks } = await supabase
+    .from("ai_draft_blocks")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("week_start_date", weekStart)
+    .eq("applied", false)
+    .order("starts_at", { ascending: true });
+
+  return NextResponse.json({ weekStart, plan: plan ?? null, blocks: blocks ?? [], draftBlocks: draftBlocks ?? [] });
 }

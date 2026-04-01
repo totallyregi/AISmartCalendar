@@ -19,7 +19,7 @@ const MONTH_NAMES = [
   "December",
 ];
 
-type DayMeta = { external: number; classes: number; fixedHabits: number; generated: number };
+type DayMeta = { external: number; classes: number; fixedHabits: number; generated: number; personal: number };
 
 export function CalendarView({
   year,
@@ -83,7 +83,7 @@ export function CalendarView({
               return <div key={`empty-${i}`} className="min-h-[5rem] border-r border-b border-zinc-100 bg-zinc-50/40 last:border-r-0 dark:border-zinc-800 dark:bg-zinc-950/30" />;
             }
 
-            const meta = dayMeta[cell.date] ?? { external: 0, classes: 0, fixedHabits: 0, generated: 0 };
+            const meta = dayMeta[cell.date] ?? { external: 0, classes: 0, fixedHabits: 0, generated: 0, personal: 0 };
             const isToday = cell.date === today;
             const isSelected = cell.date === selectedDate;
 
@@ -101,6 +101,7 @@ export function CalendarView({
                   {meta.classes > 0 && <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />}
                   {meta.fixedHabits > 0 && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
                   {meta.generated > 0 && <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />}
+                  {meta.personal > 0 && <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />}
                 </div>
               </Link>
             );

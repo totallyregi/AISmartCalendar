@@ -141,6 +141,52 @@ create table if not exists public.weekly_plan_blocks (
   check (planned_minutes % 15 = 0)
 );
 
+alter table public.weekly_plan_blocks
+  add column if not exists origin text not null default 'applied',
+  add column if not exists editable boolean not null default true;
+
+create table if not exists public.ai_draft_blocks (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  week_start_date date not null,
+  block_type text not null check (block_type in ('assignment', 'habit_flexible', 'habit_fixed', 'class', 'external', 'personal')),
+  title text not null,
+  starts_at timestamptz not null,
+  ends_at timestamptz not null,
+  assignment_id uuid references public.assignments(id) on delete set null,
+  habit_id uuid references public.habits(id) on delete set null,
+  editable boolean not null default true,
+  applied boolean not null default false,
+  check (ends_at > starts_at),
+  unique(user_id, week_start_date, title, starts_at, ends_at)
+);
+
+create table if not exists public.user_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  title text not null,
+  starts_at timestamptz not null,
+  ends_at timestamptz not null,
+  source text not null default 'manual',
+  editable boolean not null default true,
+  check (ends_at > starts_at)
+);
+
+create table if not exists public.class_meeting_overrides (
+  id uuid primary key default gen_random_uuid(),
+  class_meeting_id uuid not null references public.class_meetings(id) on delete cascade,
+  class_id uuid not null references public.class_sections(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  override_date date not null,
+  canceled boolean not null default false,
+  override_start_time time,
+  override_end_time time,
+  check (
+    canceled = true or (override_start_time is not null and override_end_time is not null and override_end_time > override_start_time)
+  ),
+  unique(class_meeting_id, override_date)
+);
+
 alter table public.profiles enable row level security;
 alter table public.class_sections enable row level security;
 alter table public.class_meetings enable row level security;
@@ -152,6 +198,9 @@ alter table public.external_calendars enable row level security;
 alter table public.external_events enable row level security;
 alter table public.weekly_plans enable row level security;
 alter table public.weekly_plan_blocks enable row level security;
+alter table public.ai_draft_blocks enable row level security;
+alter table public.user_events enable row level security;
+alter table public.class_meeting_overrides enable row level security;
 
 drop policy if exists "Users can read own profile" on public.profiles;
 drop policy if exists "Users can update own profile" on public.profiles;
@@ -173,6 +222,9 @@ create policy "Users can CRUD own external calendars" on public.external_calenda
 create policy "Users can CRUD own external events" on public.external_events for all using (auth.uid() = user_id);
 create policy "Users can CRUD own weekly plans" on public.weekly_plans for all using (auth.uid() = user_id);
 create policy "Users can CRUD own weekly blocks" on public.weekly_plan_blocks for all using (auth.uid() = user_id);
+create policy "Users can CRUD own AI draft blocks" on public.ai_draft_blocks for all using (auth.uid() = user_id);
+create policy "Users can CRUD own user events" on public.user_events for all using (auth.uid() = user_id);
+create policy "Users can CRUD own class meeting overrides" on public.class_meeting_overrides for all using (auth.uid() = user_id);
 
 create or replace function public.handle_new_user()
 returns trigger as $$

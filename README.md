@@ -79,6 +79,31 @@ Set the same env vars in Vercel:
 
 Then redeploy.
 
+## Validation Checklist (AI Calendar Upgrade)
+
+- Google state toggles correctly: `Connect` -> `Connected` -> `Disconnect`.
+- `Sync now` imports external events into `external_events`.
+- Generate writes only to `ai_draft_blocks` (not main calendar).
+- AI draft items can be edited/deleted in `AI Calendar` timeline.
+- `Apply AI schedule to Calendar` copies drafts to `weekly_plan_blocks` with `origin='applied'`.
+- Main `Calendar` supports create/edit/delete for personal events.
+- Class events support single-date cancel/edit via overrides.
+
+## Deploy Steps (Updated Flow)
+
+1. Re-run `supabase/schema.sql` in Supabase SQL editor.
+2. Confirm Vercel env vars include:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `GOOGLE_CLIENT_ID`
+   - `GOOGLE_CLIENT_SECRET`
+   - `OPENAI_API_KEY` (optional for this scheduler flow)
+3. Redeploy on Vercel.
+4. Smoke test:
+   - `/dashboard` for Google connect/sync/generate/apply/edit.
+   - `/calendar` for personal events and class override actions.
+5. Verify data isolation by logging in with a second user and confirming RLS separation.
+
 ## Important Notes
 
 - Existing v1 tables/routes (today/check-in/reflection) were removed from active app flow.
