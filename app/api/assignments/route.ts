@@ -77,6 +77,25 @@ export async function POST(request: Request) {
       .single());
   }
 
+  // Backward-compat: some DBs still enforce legacy non-null `due_date`.
+  if (error?.message?.includes("null value in column \"due_date\"")) {
+    ({ data, error } = await supabase
+      .from("assignments")
+      .insert({
+        user_id: user.id,
+        class_id,
+        name,
+        title: name,
+        due_at,
+        due_date: due_at,
+        estimated_minutes,
+        remaining_minutes: estimated_minutes,
+        status: "not_started",
+      })
+      .select()
+      .single());
+  }
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const out = data as Record<string, unknown>;
   if (typeof out?.name !== "string" && typeof out?.title === "string") {

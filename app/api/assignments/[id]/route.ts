@@ -16,6 +16,7 @@ export async function PUT(
   const updates: Record<string, unknown> = {};
   if (typeof body.name === "string") updates.name = body.name;
   if (typeof body.due_at === "string") updates.due_at = body.due_at;
+  if (typeof body.due_at === "string") updates.due_date = body.due_at;
   if (typeof body.estimated_minutes === "number") updates.estimated_minutes = body.estimated_minutes;
   if (typeof body.remaining_minutes === "number") updates.remaining_minutes = body.remaining_minutes;
   if (["not_started", "in_progress", "done"].includes(body.status)) updates.status = body.status;
