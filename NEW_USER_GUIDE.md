@@ -300,5 +300,3 @@ Tip: collapse sidebar while reviewing calendar details on a phone.
 10. Update remaining assignment minutes and regenerate as needed.
 
 ---
-
-If you want, I can also generate a shorter `QUICK_START.md` (2-3 minute setup) and keep this file as the full manual.
