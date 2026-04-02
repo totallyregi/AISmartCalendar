@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo } from "react";
+
 type Event = {
   id: string;
   starts_at: string;
@@ -19,6 +21,11 @@ const sourceCls: Record<Event["source"], string> = {
 };
 
 export function WeekTimeline({ date, events, mode }: { date: string; events: Event[]; mode: "main" | "ai" }) {
+  const sortedEvents = useMemo(
+    () => [...events].sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()),
+    [events]
+  );
+
   async function editDraft(e: Event) {
     const title = prompt("Edit title", e.title) ?? e.title;
     const starts = prompt("Start datetime (ISO)", e.starts_at) ?? e.starts_at;
@@ -143,11 +150,11 @@ export function WeekTimeline({ date, events, mode }: { date: string; events: Eve
         <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">{date} details</h3>
         <span className="text-xs text-zinc-500 dark:text-zinc-400">{events.length} item{events.length === 1 ? "" : "s"}</span>
       </div>
-      {events.length === 0 ? (
+      {sortedEvents.length === 0 ? (
         <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">No events for this day.</p>
       ) : (
         <ul className="mt-3 space-y-2">
-          {events.map((e, idx) => (
+          {sortedEvents.map((e, idx) => (
             <li key={`${e.id}-${idx}`} className="space-y-1 rounded border border-zinc-200 p-2 dark:border-zinc-700">
               <div className="flex items-center gap-2 text-sm">
                 <span className={`rounded px-1.5 py-0.5 text-xs capitalize ${sourceCls[e.source]}`}>{e.source.replace("_", " ")}</span>
