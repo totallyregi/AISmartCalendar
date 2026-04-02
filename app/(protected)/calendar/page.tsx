@@ -20,6 +20,12 @@ type TimelineEvent = {
   fromWeeklyPlan?: boolean;
 };
 
+type CalendarPreviewEvent = {
+  starts_at: string;
+  title: string;
+  source: "external" | "class" | "fixed_habit" | "flexible_habit" | "assignment" | "generated" | "personal";
+};
+
 function dateOnly(value: string) {
   return value.slice(0, 10);
 }
@@ -187,6 +193,15 @@ export default async function CalendarPage({
   const selectedEvents = dayEvents
     .filter((e) => dateOnly(e.starts_at) === selectedDate)
     .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  const dayPreviewByDate: Record<string, CalendarPreviewEvent[]> = {};
+  for (const e of dayEvents) {
+    const d = dateOnly(e.starts_at);
+    if (!dayPreviewByDate[d]) dayPreviewByDate[d] = [];
+    dayPreviewByDate[d].push({ starts_at: e.starts_at, title: e.title, source: e.source });
+  }
+  Object.keys(dayPreviewByDate).forEach((d) => {
+    dayPreviewByDate[d].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  });
 
   return (
     <div className="space-y-6 animate-in">
@@ -212,7 +227,17 @@ export default async function CalendarPage({
         <CalendarLegend variant="main" />
         <PersonalEventForm defaultDate={selectedDate} />
       </div>
-      <CalendarView year={year} month={month} selectedDate={selectedDate} dayMeta={metaByDate} basePath="/calendar" showGeneratedDots={false} />
+      <CalendarView
+        year={year}
+        month={month}
+        selectedDate={selectedDate}
+        dayMeta={metaByDate}
+        dayPreview={dayPreviewByDate}
+        previewLimit={3}
+        timeZone={timeZone}
+        basePath="/calendar"
+        showGeneratedDots={false}
+      />
       <WeekTimeline date={selectedDate} events={selectedEvents} mode="main" timeZone={timeZone} />
     </div>
   );

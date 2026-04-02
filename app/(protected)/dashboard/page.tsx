@@ -21,6 +21,12 @@ type TimelineEvent = {
   fromWeeklyPlan?: boolean;
 };
 
+type CalendarPreviewEvent = {
+  starts_at: string;
+  title: string;
+  source: "external" | "class" | "fixed_habit" | "flexible_habit" | "assignment" | "generated" | "personal";
+};
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -159,6 +165,15 @@ export default async function DashboardPage({
   });
 
   const selectedEvents = events.filter((e) => dateOnly(e.starts_at) === selectedDate).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  const dayPreviewByDate: Record<string, CalendarPreviewEvent[]> = {};
+  for (const e of events) {
+    const d = dateOnly(e.starts_at);
+    if (!dayPreviewByDate[d]) dayPreviewByDate[d] = [];
+    dayPreviewByDate[d].push({ starts_at: e.starts_at, title: e.title, source: e.source });
+  }
+  Object.keys(dayPreviewByDate).forEach((d) => {
+    dayPreviewByDate[d].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  });
   return (
     <div className="space-y-6 animate-in">
       <div>
@@ -169,7 +184,17 @@ export default async function DashboardPage({
       <DashboardPlanner currentWeek={currentWeek} hasCurrentPlan={!!planRes.data} />
 
       <CalendarLegend variant="ai" />
-      <CalendarView year={year} month={month} selectedDate={selectedDate} dayMeta={metaByDate} basePath="/dashboard" showGeneratedDots />
+      <CalendarView
+        year={year}
+        month={month}
+        selectedDate={selectedDate}
+        dayMeta={metaByDate}
+        dayPreview={dayPreviewByDate}
+        previewLimit={3}
+        timeZone={timeZone}
+        basePath="/dashboard"
+        showGeneratedDots
+      />
       <WeekTimeline date={selectedDate} events={selectedEvents} mode="ai" timeZone={timeZone} />
     </div>
   );

@@ -25,6 +25,9 @@ export function CalendarView({
   month,
   selectedDate,
   dayMeta,
+  dayPreview = {},
+  previewLimit = 3,
+  timeZone = "UTC",
   basePath = "/calendar",
   showGeneratedDots = false,
 }: {
@@ -32,6 +35,9 @@ export function CalendarView({
   month: number;
   selectedDate: string;
   dayMeta: Record<string, CalendarDayMeta>;
+  dayPreview?: Record<string, { starts_at: string; title: string; source: "external" | "class" | "fixed_habit" | "flexible_habit" | "assignment" | "generated" | "personal" }[]>;
+  previewLimit?: number;
+  timeZone?: string;
   basePath?: "/calendar" | "/dashboard";
   /** Only the AI Calendar month grid shows draft “generated” dots */
   showGeneratedDots?: boolean;
@@ -62,6 +68,15 @@ export function CalendarView({
     router.push(`${basePath}?year=${y}&month=${m}`);
   }
 
+  function formatPreviewTime(iso: string) {
+    return new Date(iso).toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZone,
+    });
+  }
+
   return (
     <div className="animate-in">
       <div className="mb-4 flex items-center justify-between">
@@ -89,18 +104,20 @@ export function CalendarView({
         <div className="grid grid-cols-7">
           {cells.map((cell, i) => {
             if (!cell.date) {
-              return <div key={`empty-${i}`} className="min-h-[5rem] border-r border-b border-zinc-100 bg-zinc-50/40 last:border-r-0 dark:border-zinc-800 dark:bg-zinc-950/30" />;
+              return <div key={`empty-${i}`} className="min-h-[8rem] border-r border-b border-zinc-100 bg-zinc-50/40 last:border-r-0 dark:border-zinc-800 dark:bg-zinc-950/30 md:min-h-[9.5rem]" />;
             }
 
             const meta = dayMeta[cell.date] ?? emptyDayMeta();
             const isToday = cell.date === today;
             const isSelected = cell.date === selectedDate;
+            const previews = (dayPreview[cell.date] ?? []).slice(0, previewLimit);
+            const hiddenCount = Math.max(0, (dayPreview[cell.date] ?? []).length - previews.length);
 
             return (
               <Link
                 key={cell.date}
                 href={`${basePath}?year=${year}&month=${month}&date=${cell.date}`}
-                className={`flex min-h-[5rem] flex-col border-r border-b border-zinc-100 p-2 transition-colors last:border-r-0 hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-800 ${
+                className={`flex min-h-[8rem] flex-col border-r border-b border-zinc-100 p-2 transition-colors last:border-r-0 hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-800 md:min-h-[9.5rem] ${
                   isSelected ? "bg-zinc-100 dark:bg-zinc-800" : isToday ? "bg-amber-50 dark:bg-amber-950/20" : "bg-white dark:bg-zinc-900"
                 }`}
               >
@@ -113,6 +130,16 @@ export function CalendarView({
                   {meta.assignments > 0 && <span className="h-2 w-2 rounded-full bg-orange-500 ring-1 ring-orange-400/40 dark:ring-orange-400/25" />}
                   {showGeneratedDots && meta.generated > 0 && <span className="h-2 w-2 rounded-full bg-cyan-400 ring-1 ring-cyan-300/50 dark:ring-cyan-300/35" />}
                   {meta.personal > 0 && <span className="h-2 w-2 rounded-full bg-rose-500 ring-1 ring-rose-400/40 dark:ring-rose-400/25" />}
+                </div>
+                <div className="mt-2 space-y-1">
+                  {previews.map((p, idx) => (
+                    <div key={`${p.starts_at}-${idx}`} className="truncate rounded bg-zinc-100/80 px-1.5 py-0.5 text-[10px] text-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-300">
+                      <span className="font-medium">{formatPreviewTime(p.starts_at)}</span> {p.title}
+                    </div>
+                  ))}
+                  {hiddenCount > 0 && (
+                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400">+{hiddenCount} more</div>
+                  )}
                 </div>
               </Link>
             );
