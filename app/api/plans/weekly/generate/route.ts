@@ -322,21 +322,39 @@ export async function POST(request: Request) {
     id: string;
     name: string;
     habit_flexible_preferred_slots?: { day_of_week: number; start_time: string; end_time: string }[];
-    habit_flexible_rules: {
-      duration_minutes: number;
-      preference_mode?: "preferred_days" | "times_per_week";
-      preferred_days: number[];
-      times_per_week: number | null;
-    }[];
+    habit_flexible_rules:
+      | {
+          duration_minutes: number;
+          preference_mode?: "preferred_days" | "times_per_week";
+          preferred_days: number[];
+          times_per_week: number | null;
+        }
+      | {
+          duration_minutes: number;
+          preference_mode?: "preferred_days" | "times_per_week";
+          preferred_days: number[];
+          times_per_week: number | null;
+        }[];
   }[];
 
   for (const h of flexHabits) {
-    const rule = h.habit_flexible_rules?.[0];
+    const ruleOrArr = h.habit_flexible_rules as unknown;
+    const rule =
+      (Array.isArray(ruleOrArr) ? ruleOrArr[0] : ruleOrArr) as
+        | {
+            duration_minutes: number;
+            preference_mode?: "preferred_days" | "times_per_week";
+            preferred_days: number[];
+            times_per_week: number | null;
+          }
+        | undefined;
     if (!rule) continue;
 
     const duration = Math.max(15, Number(rule.duration_minutes || 60));
     const mode = rule.preference_mode === "times_per_week" ? "times_per_week" : "preferred_days";
-    const preferredDays = [...new Set((rule.preferred_days ?? []).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))];
+    const preferredDays = [
+      ...new Set((rule.preferred_days ?? []).filter((d: number) => Number.isInteger(d) && d >= 0 && d <= 6)),
+    ];
     const slotsByDow = new Map<number, { day_of_week: number; start_time: string; end_time: string }[]>();
     (h.habit_flexible_preferred_slots ?? []).forEach((s) => {
       if (!slotsByDow.has(s.day_of_week)) slotsByDow.set(s.day_of_week, []);

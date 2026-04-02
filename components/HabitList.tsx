@@ -11,12 +11,19 @@ type HabitRow = {
   active: boolean;
   habit_fixed_slots?: { day_of_week: number; start_time: string; end_time: string }[];
   habit_flexible_preferred_slots?: { day_of_week: number; start_time: string; end_time: string }[];
-  habit_flexible_rules?: {
-    duration_minutes: number;
-    preference_mode?: "preferred_days" | "times_per_week";
-    preferred_days: number[];
-    times_per_week: number | null;
-  }[];
+  habit_flexible_rules?:
+    | {
+        duration_minutes: number;
+        preference_mode?: "preferred_days" | "times_per_week";
+        preferred_days: number[];
+        times_per_week: number | null;
+      }
+    | {
+        duration_minutes: number;
+        preference_mode?: "preferred_days" | "times_per_week";
+        preferred_days: number[];
+        times_per_week: number | null;
+      }[];
 };
 
 export function HabitList({ habits }: { habits: HabitRow[] }) {
@@ -35,7 +42,8 @@ export function HabitList({ habits }: { habits: HabitRow[] }) {
 
       <ul className="space-y-2">
         {habits.map((h) => {
-          const flex = h.habit_flexible_rules?.[0];
+          const flexRules = h.habit_flexible_rules as unknown;
+          const flex = Array.isArray(flexRules) ? flexRules[0] : flexRules;
           const slotSummary =
             h.habit_flexible_preferred_slots?.length
               ? ` · hours: ${h.habit_flexible_preferred_slots
@@ -46,7 +54,7 @@ export function HabitList({ habits }: { habits: HabitRow[] }) {
             (flex?.preference_mode ?? "preferred_days") === "times_per_week"
               ? `${flex?.duration_minutes ?? 0} min · ${flex?.times_per_week ?? 0}x/week${slotSummary}`
               : `${flex?.duration_minutes ?? 0} min` +
-                `${flex?.preferred_days?.length ? ` · days: ${flex.preferred_days.map((d) => WEEKDAY_FULL[d]).join(", ")}` : ""}` +
+                `${flex?.preferred_days?.length ? ` · days: ${flex.preferred_days.map((d: number) => WEEKDAY_FULL[d]).join(", ")}` : ""}` +
                 `${slotSummary}`;
           return (
             <li key={h.id} className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">

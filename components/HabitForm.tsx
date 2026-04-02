@@ -10,12 +10,19 @@ type HabitLike = {
   active: boolean;
   habit_fixed_slots?: { day_of_week: number; start_time: string; end_time: string }[];
   habit_flexible_preferred_slots?: { day_of_week: number; start_time: string; end_time: string }[];
-  habit_flexible_rules?: {
-    duration_minutes: number;
-    preference_mode?: "preferred_days" | "times_per_week";
-    preferred_days: number[];
-    times_per_week: number | null;
-  }[];
+  habit_flexible_rules?:
+    | {
+        duration_minutes: number;
+        preference_mode?: "preferred_days" | "times_per_week";
+        preferred_days: number[];
+        times_per_week: number | null;
+      }
+    | {
+        duration_minutes: number;
+        preference_mode?: "preferred_days" | "times_per_week";
+        preferred_days: number[];
+        times_per_week: number | null;
+      }[];
 };
 
 type FixedSlotRow = { day_of_week: number; start_time: string; end_time: string };
@@ -44,7 +51,8 @@ export function HabitForm({
     habit?.habit_fixed_slots?.length ? habit.habit_fixed_slots.map((s) => ({ ...s })) : []
   );
 
-  const flex = habit?.habit_flexible_rules?.[0];
+  const flexRules = habit?.habit_flexible_rules as unknown;
+  const flex = Array.isArray(flexRules) ? flexRules[0] : flexRules;
   const [durationH, setDurationH] = useState(Math.floor((flex?.duration_minutes ?? 0) / 60));
   const [durationM, setDurationM] = useState((flex?.duration_minutes ?? 0) % 60);
   const [preferenceMode, setPreferenceMode] = useState<FlexiblePreferenceMode>(flex?.preference_mode ?? "preferred_days");
@@ -65,7 +73,8 @@ export function HabitForm({
         setPreferredSlots((slots) => slots.filter((s) => s.day_of_week !== d));
         return prev.filter((x) => x !== d);
       }
-      setPreferredSlots((slots) => [...slots, { day_of_week: d, start_time: "18:00:00", end_time: "19:00:00" }]);
+      // Add a placeholder hours row for this day. User must choose start/end times.
+      setPreferredSlots((slots) => [...slots, { day_of_week: d, start_time: "", end_time: "" }]);
       return [...prev, d];
     });
   };
@@ -337,7 +346,7 @@ export function HabitForm({
               <label className="block text-sm">Preferred hours by day</label>
               <button
                 type="button"
-                onClick={() => setPreferredSlots((prev) => [...prev, { day_of_week: 1, start_time: "18:00:00", end_time: "19:00:00" }])}
+                onClick={() => setPreferredSlots((prev) => [...prev, { day_of_week: preferredDays[0] ?? 1, start_time: "", end_time: "" }])}
                 className="text-xs font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
               >
                 + Add preferred hours
@@ -374,6 +383,9 @@ export function HabitForm({
                     }
                     className="rounded border border-zinc-300 px-2 py-2 dark:border-zinc-600 dark:bg-zinc-800"
                   >
+                    <option value="" disabled>
+                      Start time
+                    </option>
                     {timeOptions.map((t) => (
                       <option key={t} value={t}>
                         {formatTimeHhmmssTo12h(t)}
@@ -389,6 +401,9 @@ export function HabitForm({
                     }
                     className="rounded border border-zinc-300 px-2 py-2 dark:border-zinc-600 dark:bg-zinc-800"
                   >
+                    <option value="" disabled>
+                      End time
+                    </option>
                     {timeOptions.map((t) => (
                       <option key={`f-${t}`} value={t}>
                         {formatTimeHhmmssTo12h(t)}
