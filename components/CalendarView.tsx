@@ -20,6 +20,19 @@ const MONTH_NAMES = [
   "December",
 ];
 
+const previewCls: Record<
+  "external" | "class" | "fixed_habit" | "flexible_habit" | "assignment" | "generated" | "personal",
+  string
+> = {
+  external: "bg-indigo-100/90 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300",
+  class: "bg-violet-100/90 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300",
+  fixed_habit: "bg-green-100/90 text-green-800 dark:bg-green-900/40 dark:text-green-300",
+  flexible_habit: "bg-fuchsia-100/90 text-fuchsia-800 dark:bg-fuchsia-900/40 dark:text-fuchsia-300",
+  assignment: "bg-orange-100/90 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300",
+  generated: "bg-cyan-100/90 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-300",
+  personal: "bg-rose-100/90 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300",
+};
+
 export function CalendarView({
   year,
   month,
@@ -133,7 +146,10 @@ export function CalendarView({
                 </div>
                 <div className="mt-2 space-y-1">
                   {previews.map((p, idx) => (
-                    <div key={`${p.starts_at}-${idx}`} className="truncate rounded bg-zinc-100/80 px-1.5 py-0.5 text-[10px] text-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-300">
+                    <div
+                      key={`${p.starts_at}-${idx}`}
+                      className={`truncate rounded px-1.5 py-0.5 text-[10px] ${previewCls[p.source]}`}
+                    >
                       <span className="font-medium">{formatPreviewTime(p.starts_at)}</span> {p.title}
                     </div>
                   ))}

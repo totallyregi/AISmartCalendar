@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 type ClassItem = { id: string; class_code: string; class_name: string };
 
-export function Sidebar() {
+export function Sidebar({ collapsed }: { collapsed: boolean }) {
   const pathname = usePathname();
   const [classesOpen, setClassesOpen] = useState(true);
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -24,7 +24,12 @@ export function Sidebar() {
     "sidebar-link block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors";
 
   return (
-    <aside className="sidebar fixed left-0 top-0 z-20 flex h-full w-64 flex-col border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+    <aside
+      className={`sidebar fixed left-0 top-0 z-30 flex h-full w-64 flex-col border-r border-zinc-200 bg-white transition-transform duration-200 dark:border-zinc-800 dark:bg-zinc-900 ${
+        collapsed ? "-translate-x-full" : "translate-x-0"
+      }`}
+      aria-hidden={collapsed}
+    >
       <div className="flex h-14 shrink-0 items-center border-b border-zinc-200 px-4 dark:border-zinc-800">
         <Link
           href="/dashboard"
