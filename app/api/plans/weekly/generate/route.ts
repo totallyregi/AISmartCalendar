@@ -164,7 +164,7 @@ export async function POST(request: Request) {
     supabase
       .from("habits")
       .select(
-        "id,name,habit_flexible_rules(duration_minutes,preference_mode,preferred_days,times_per_week,habit_flexible_preferred_slots(day_of_week,start_time,end_time))"
+        "id,name,habit_flexible_rules(duration_minutes,preference_mode,preferred_days,times_per_week),habit_flexible_preferred_slots(day_of_week,start_time,end_time)"
       )
       .eq("user_id", user.id)
       .eq("type", "flexible")
@@ -321,12 +321,12 @@ export async function POST(request: Request) {
   const flexHabits = (flexHabitRes.data ?? []) as {
     id: string;
     name: string;
+    habit_flexible_preferred_slots?: { day_of_week: number; start_time: string; end_time: string }[];
     habit_flexible_rules: {
       duration_minutes: number;
       preference_mode?: "preferred_days" | "times_per_week";
       preferred_days: number[];
       times_per_week: number | null;
-      habit_flexible_preferred_slots?: { day_of_week: number; start_time: string; end_time: string }[];
     }[];
   }[];
 
@@ -338,7 +338,7 @@ export async function POST(request: Request) {
     const mode = rule.preference_mode === "times_per_week" ? "times_per_week" : "preferred_days";
     const preferredDays = [...new Set((rule.preferred_days ?? []).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))];
     const slotsByDow = new Map<number, { day_of_week: number; start_time: string; end_time: string }[]>();
-    (rule.habit_flexible_preferred_slots ?? []).forEach((s) => {
+    (h.habit_flexible_preferred_slots ?? []).forEach((s) => {
       if (!slotsByDow.has(s.day_of_week)) slotsByDow.set(s.day_of_week, []);
       slotsByDow.get(s.day_of_week)?.push(s);
     });

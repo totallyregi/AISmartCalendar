@@ -269,6 +269,21 @@ create policy "Users can read own profile" on public.profiles for select using (
 create policy "Users can update own profile" on public.profiles for update using (auth.uid() = id);
 create policy "Users can insert own profile" on public.profiles for insert with check (auth.uid() = id);
 
+drop policy if exists "Users can CRUD own class sections" on public.class_sections;
+drop policy if exists "Users can CRUD own class meetings" on public.class_meetings;
+drop policy if exists "Users can CRUD own assignments" on public.assignments;
+drop policy if exists "Users can CRUD own habits" on public.habits;
+drop policy if exists "Users can CRUD own fixed slots" on public.habit_fixed_slots;
+drop policy if exists "Users can CRUD own flexible rules" on public.habit_flexible_rules;
+drop policy if exists "Users can CRUD own flexible preferred slots" on public.habit_flexible_preferred_slots;
+drop policy if exists "Users can CRUD own external calendars" on public.external_calendars;
+drop policy if exists "Users can CRUD own external events" on public.external_events;
+drop policy if exists "Users can CRUD own weekly plans" on public.weekly_plans;
+drop policy if exists "Users can CRUD own weekly blocks" on public.weekly_plan_blocks;
+drop policy if exists "Users can CRUD own AI draft blocks" on public.ai_draft_blocks;
+drop policy if exists "Users can CRUD own user events" on public.user_events;
+drop policy if exists "Users can CRUD own class meeting overrides" on public.class_meeting_overrides;
+
 create policy "Users can CRUD own class sections" on public.class_sections for all using (auth.uid() = user_id);
 create policy "Users can CRUD own class meetings" on public.class_meetings for all
 using (exists (select 1 from public.class_sections cs where cs.id = class_id and cs.user_id = auth.uid()));

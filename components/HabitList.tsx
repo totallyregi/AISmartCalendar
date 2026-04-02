@@ -10,12 +10,12 @@ type HabitRow = {
   type: "fixed" | "flexible";
   active: boolean;
   habit_fixed_slots?: { day_of_week: number; start_time: string; end_time: string }[];
+  habit_flexible_preferred_slots?: { day_of_week: number; start_time: string; end_time: string }[];
   habit_flexible_rules?: {
     duration_minutes: number;
     preference_mode?: "preferred_days" | "times_per_week";
     preferred_days: number[];
     times_per_week: number | null;
-    habit_flexible_preferred_slots?: { day_of_week: number; start_time: string; end_time: string }[];
   }[];
 };
 
@@ -37,8 +37,8 @@ export function HabitList({ habits }: { habits: HabitRow[] }) {
         {habits.map((h) => {
           const flex = h.habit_flexible_rules?.[0];
           const slotSummary =
-            flex?.habit_flexible_preferred_slots?.length
-              ? ` · hours: ${flex.habit_flexible_preferred_slots
+            h.habit_flexible_preferred_slots?.length
+              ? ` · hours: ${h.habit_flexible_preferred_slots
                   .map((s) => formatClassMeetingLine(s.day_of_week, s.start_time, s.end_time))
                   .join(", ")}`
               : "";

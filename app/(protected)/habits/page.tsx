@@ -5,7 +5,7 @@ export default async function HabitsPage() {
   const supabase = await createClient();
   const { data: habits } = await supabase
     .from("habits")
-    .select("*,habit_fixed_slots(*),habit_flexible_rules(*,habit_flexible_preferred_slots(*))")
+    .select("*,habit_fixed_slots(*),habit_flexible_rules(*),habit_flexible_preferred_slots(*)")
     .order("name");
 
   return (

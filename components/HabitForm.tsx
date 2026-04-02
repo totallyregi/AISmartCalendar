@@ -9,12 +9,12 @@ type HabitLike = {
   type: "fixed" | "flexible";
   active: boolean;
   habit_fixed_slots?: { day_of_week: number; start_time: string; end_time: string }[];
+  habit_flexible_preferred_slots?: { day_of_week: number; start_time: string; end_time: string }[];
   habit_flexible_rules?: {
     duration_minutes: number;
     preference_mode?: "preferred_days" | "times_per_week";
     preferred_days: number[];
     times_per_week: number | null;
-    habit_flexible_preferred_slots?: { day_of_week: number; start_time: string; end_time: string }[];
   }[];
 };
 
@@ -51,8 +51,8 @@ export function HabitForm({
   const [preferredDays, setPreferredDays] = useState<number[]>(flex?.preferred_days ?? []);
   const [timesPerWeek, setTimesPerWeek] = useState<number | "">(flex?.times_per_week ?? "");
   const [preferredSlots, setPreferredSlots] = useState<FlexibleSlotRow[]>(
-    flex?.habit_flexible_preferred_slots?.length
-      ? flex.habit_flexible_preferred_slots.map((s) => ({ ...s }))
+    habit?.habit_flexible_preferred_slots?.length
+      ? habit.habit_flexible_preferred_slots.map((s) => ({ ...s }))
       : []
   );
 

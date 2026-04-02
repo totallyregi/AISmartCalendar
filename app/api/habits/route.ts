@@ -64,7 +64,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("habits")
-    .select("*,habit_fixed_slots(*),habit_flexible_rules(*,habit_flexible_preferred_slots(*))")
+    .select("*,habit_fixed_slots(*),habit_flexible_rules(*),habit_flexible_preferred_slots(*)")
     .eq("user_id", user.id)
     .order("name");
 
