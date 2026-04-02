@@ -1,11 +1,19 @@
-export function CalendarLegend() {
-  const items = [
+export function CalendarLegend({ variant = "main" }: { variant?: "main" | "ai" }) {
+  const mainItems = [
     { label: "External", color: "bg-blue-500" },
     { label: "Classes", color: "bg-violet-500" },
     { label: "Fixed habits", color: "bg-emerald-500" },
-    { label: "Generated", color: "bg-amber-500" },
+    { label: "Flexible habits", color: "bg-teal-500" },
+    { label: "Assignments", color: "bg-sky-500" },
     { label: "Personal", color: "bg-rose-500" },
   ];
+
+  const aiItems = [
+    ...mainItems,
+    { label: "Generated (draft)", color: "bg-amber-500" },
+  ];
+
+  const items = variant === "ai" ? aiItems : mainItems;
 
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">

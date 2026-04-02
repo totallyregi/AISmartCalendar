@@ -75,7 +75,9 @@ export default function PreferencesPage() {
   }
 
   useEffect(() => {
-    loadData();
+    queueMicrotask(() => {
+      void loadData();
+    });
   }, []);
 
   const grouped = useMemo(() => {

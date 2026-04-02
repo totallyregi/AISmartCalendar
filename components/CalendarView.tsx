@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { WEEKDAY_FULL } from "@/lib/datetimeDisplay";
+import type { CalendarDayMeta } from "@/lib/calendarMeta";
+import { emptyDayMeta } from "@/lib/calendarMeta";
 const MONTH_NAMES = [
   "January",
   "February",
@@ -18,20 +20,21 @@ const MONTH_NAMES = [
   "December",
 ];
 
-type DayMeta = { external: number; classes: number; fixedHabits: number; generated: number; personal: number };
-
 export function CalendarView({
   year,
   month,
   selectedDate,
   dayMeta,
   basePath = "/calendar",
+  showGeneratedDots = false,
 }: {
   year: number;
   month: number;
   selectedDate: string;
-  dayMeta: Record<string, DayMeta>;
+  dayMeta: Record<string, CalendarDayMeta>;
   basePath?: "/calendar" | "/dashboard";
+  /** Only the AI Calendar month grid shows draft “generated” dots */
+  showGeneratedDots?: boolean;
 }) {
   const router = useRouter();
   const first = new Date(year, month - 1, 1);
@@ -89,7 +92,7 @@ export function CalendarView({
               return <div key={`empty-${i}`} className="min-h-[5rem] border-r border-b border-zinc-100 bg-zinc-50/40 last:border-r-0 dark:border-zinc-800 dark:bg-zinc-950/30" />;
             }
 
-            const meta = dayMeta[cell.date] ?? { external: 0, classes: 0, fixedHabits: 0, generated: 0, personal: 0 };
+            const meta = dayMeta[cell.date] ?? emptyDayMeta();
             const isToday = cell.date === today;
             const isSelected = cell.date === selectedDate;
 
@@ -106,7 +109,9 @@ export function CalendarView({
                   {meta.external > 0 && <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />}
                   {meta.classes > 0 && <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />}
                   {meta.fixedHabits > 0 && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
-                  {meta.generated > 0 && <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />}
+                  {meta.flexibleHabits > 0 && <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />}
+                  {meta.assignments > 0 && <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />}
+                  {showGeneratedDots && meta.generated > 0 && <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />}
                   {meta.personal > 0 && <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />}
                 </div>
               </Link>

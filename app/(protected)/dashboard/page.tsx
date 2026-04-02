@@ -4,20 +4,21 @@ import { WeekTimeline } from "@/components/WeekTimeline";
 import { DashboardPlanner } from "@/components/DashboardPlanner";
 import { createClient } from "@/lib/supabase/server";
 import { DEFAULT_USER_TIMEZONE } from "@/lib/datetimeDisplay";
+import type { CalendarDayMeta } from "@/lib/calendarMeta";
+import { emptyDayMeta, incrementMetaForWeeklyBlock, timelineSourceFromWeeklyBlockType } from "@/lib/calendarMeta";
 import { isValidTimeZone, weekStartSundayDateKey, zonedDateKey, zonedDateTimeToUtc } from "@/lib/timezone";
 
 function dateOnly(value: string) {
   return value.slice(0, 10);
 }
 
-type DayMeta = { external: number; classes: number; fixedHabits: number; generated: number; personal: number };
-
 type TimelineEvent = {
   id: string;
   starts_at: string;
   ends_at: string;
   title: string;
-  source: "external" | "class" | "fixed_habit" | "generated" | "personal";
+  source: "external" | "class" | "fixed_habit" | "flexible_habit" | "assignment" | "generated" | "personal";
+  fromWeeklyPlan?: boolean;
 };
 
 export default async function DashboardPage({
@@ -49,7 +50,7 @@ export default async function DashboardPage({
     supabase.from("external_events").select("id,starts_at,ends_at,summary").eq("user_id", user?.id).gte("starts_at", startIso).lte("starts_at", endIso),
     supabase.from("class_sections").select("id,class_code,class_name,class_meetings(id,day_of_week,start_time,end_time)").eq("user_id", user?.id),
     supabase.from("habits").select("id,name,habit_fixed_slots(id,day_of_week,start_time,end_time)").eq("user_id", user?.id).eq("type", "fixed"),
-    supabase.from("weekly_plan_blocks").select("id,starts_at,ends_at,title,origin").eq("user_id", user?.id).eq("origin", "applied").gte("starts_at", startIso).lte("starts_at", endIso),
+    supabase.from("weekly_plan_blocks").select("id,starts_at,ends_at,title,origin,block_type").eq("user_id", user?.id).eq("origin", "applied").gte("starts_at", startIso).lte("starts_at", endIso),
     supabase.from("user_events").select("id,starts_at,ends_at,title").eq("user_id", user?.id).gte("starts_at", startIso).lte("starts_at", endIso),
     supabase
       .from("class_meeting_overrides")
@@ -61,7 +62,7 @@ export default async function DashboardPage({
     supabase.from("weekly_plans").select("id").eq("user_id", user?.id).eq("week_start_date", currentWeek).single(),
   ]);
 
-  const metaByDate: Record<string, DayMeta> = {};
+  const metaByDate: Record<string, CalendarDayMeta> = {};
   const events: TimelineEvent[] = [];
   const overrideByMeetingDate = new Map<string, { canceled: boolean; start?: string; end?: string }>();
 
@@ -74,7 +75,7 @@ export default async function DashboardPage({
   });
 
   const ensure = (d: string) => {
-    if (!metaByDate[d]) metaByDate[d] = { external: 0, classes: 0, fixedHabits: 0, generated: 0, personal: 0 };
+    if (!metaByDate[d]) metaByDate[d] = emptyDayMeta();
     return metaByDate[d];
   };
 
@@ -127,8 +128,16 @@ export default async function DashboardPage({
 
   (appliedRes.data ?? []).forEach((b) => {
     const d = dateOnly(b.starts_at as string);
-    ensure(d).generated += 1;
-    events.push({ id: b.id as string, starts_at: b.starts_at as string, ends_at: b.ends_at as string, title: b.title as string, source: "generated" });
+    const bt = (b.block_type as string) ?? "assignment";
+    incrementMetaForWeeklyBlock(ensure(d), bt);
+    events.push({
+      id: b.id as string,
+      starts_at: b.starts_at as string,
+      ends_at: b.ends_at as string,
+      title: b.title as string,
+      source: timelineSourceFromWeeklyBlockType(bt),
+      fromWeeklyPlan: true,
+    });
   });
 
   (userEventRes.data ?? []).forEach((e) => {
@@ -140,7 +149,13 @@ export default async function DashboardPage({
   (draftRes.data ?? []).forEach((b) => {
     const d = dateOnly(b.starts_at as string);
     ensure(d).generated += 1;
-    events.push({ id: b.id as string, starts_at: b.starts_at as string, ends_at: b.ends_at as string, title: b.title as string, source: "generated" });
+    events.push({
+      id: b.id as string,
+      starts_at: b.starts_at as string,
+      ends_at: b.ends_at as string,
+      title: b.title as string,
+      source: "generated",
+    });
   });
 
   const selectedEvents = events.filter((e) => dateOnly(e.starts_at) === selectedDate).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
@@ -153,8 +168,8 @@ export default async function DashboardPage({
 
       <DashboardPlanner currentWeek={currentWeek} hasCurrentPlan={!!planRes.data} />
 
-      <CalendarLegend />
-      <CalendarView year={year} month={month} selectedDate={selectedDate} dayMeta={metaByDate} basePath="/dashboard" />
+      <CalendarLegend variant="ai" />
+      <CalendarView year={year} month={month} selectedDate={selectedDate} dayMeta={metaByDate} basePath="/dashboard" showGeneratedDots />
       <WeekTimeline date={selectedDate} events={selectedEvents} mode="ai" timeZone={timeZone} />
     </div>
   );

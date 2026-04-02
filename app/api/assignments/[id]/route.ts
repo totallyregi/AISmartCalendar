@@ -97,6 +97,13 @@ export async function DELETE(
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const [{ error: draftErr }, { error: appliedErr }] = await Promise.all([
+    supabase.from("ai_draft_blocks").delete().eq("user_id", user.id).eq("assignment_id", id),
+    supabase.from("weekly_plan_blocks").delete().eq("user_id", user.id).eq("assignment_id", id),
+  ]);
+  if (draftErr) return NextResponse.json({ error: draftErr.message }, { status: 500 });
+  if (appliedErr) return NextResponse.json({ error: appliedErr.message }, { status: 500 });
+
   const { error } = await supabase
     .from("assignments")
     .delete()

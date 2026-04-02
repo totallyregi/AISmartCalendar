@@ -1,27 +1,38 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 type Event = {
   id: string;
   starts_at: string;
   ends_at: string;
   title: string;
-  source: "external" | "class" | "fixed_habit" | "generated" | "personal";
+  source:
+    | "external"
+    | "class"
+    | "fixed_habit"
+    | "flexible_habit"
+    | "assignment"
+    | "generated"
+    | "personal";
   class_meeting_id?: string;
   class_id?: string;
+  /** Weekly plan / applied AI block — edit via `/api/weekly-plan-blocks` */
+  fromWeeklyPlan?: boolean;
 };
 
 const sourceCls: Record<Event["source"], string> = {
   external: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
   class: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300",
   fixed_habit: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+  flexible_habit: "bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300",
+  assignment: "bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300",
   generated: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
   personal: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
 };
 
 export function WeekTimeline({ date, events, mode, timeZone = "UTC" }: { date: string; events: Event[]; mode: "main" | "ai"; timeZone?: string }) {
-  function localMinutesOfDay(iso: string) {
+  const localMinutesOfDay = useCallback((iso: string) => {
     const parts = new Intl.DateTimeFormat("en-US", {
       timeZone,
       hour12: false,
@@ -32,7 +43,7 @@ export function WeekTimeline({ date, events, mode, timeZone = "UTC" }: { date: s
     const h = Number(map.hour ?? "0");
     const m = Number(map.minute ?? "0");
     return h * 60 + m;
-  }
+  }, [timeZone]);
 
   const sortedEvents = useMemo(
     () =>
@@ -41,7 +52,7 @@ export function WeekTimeline({ date, events, mode, timeZone = "UTC" }: { date: s
         if (byLocalTime !== 0) return byLocalTime;
         return new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
       }),
-    [events, timeZone]
+    [events, localMinutesOfDay]
   );
 
   async function editDraft(e: Event) {
@@ -175,7 +186,7 @@ export function WeekTimeline({ date, events, mode, timeZone = "UTC" }: { date: s
           {sortedEvents.map((e, idx) => (
             <li key={`${e.id}-${idx}`} className="space-y-1 rounded border border-zinc-200 p-2 dark:border-zinc-700">
               <div className="flex items-center gap-2 text-sm">
-                <span className={`rounded px-1.5 py-0.5 text-xs capitalize ${sourceCls[e.source]}`}>{e.source.replace("_", " ")}</span>
+                <span className={`rounded px-1.5 py-0.5 text-xs capitalize ${sourceCls[e.source]}`}>{e.source.replace(/_/g, " ")}</span>
                 <span className="text-zinc-700 dark:text-zinc-300">
                   {new Date(e.starts_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone })}
                   {" – "}
@@ -204,13 +215,13 @@ export function WeekTimeline({ date, events, mode, timeZone = "UTC" }: { date: s
                     <button onClick={() => cancelClassForDate(e)} className="rounded border border-red-300 px-2 py-1 text-red-600 dark:border-red-700">Delete</button>
                   </>
                 )}
-                {mode === "main" && e.source === "generated" && (
+                {mode === "main" && e.fromWeeklyPlan && (
                   <>
                     <button onClick={() => editGeneratedMain(e)} className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600">Edit</button>
                     <button onClick={() => deleteGeneratedMain(e)} className="rounded border border-red-300 px-2 py-1 text-red-600 dark:border-red-700">Delete</button>
                   </>
                 )}
-                {mode === "main" && e.source === "fixed_habit" && (
+                {mode === "main" && e.source === "fixed_habit" && !e.fromWeeklyPlan && (
                   <>
                     <button onClick={() => editFixedHabit(e)} className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600">Edit</button>
                     <button onClick={() => deleteFixedHabit(e)} className="rounded border border-red-300 px-2 py-1 text-red-600 dark:border-red-700">Delete</button>

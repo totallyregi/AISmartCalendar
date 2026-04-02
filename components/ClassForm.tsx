@@ -34,7 +34,7 @@ export function ClassForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const timeOptions = useMemo(buildTimeOptions, []);
+  const timeOptions = useMemo(() => buildTimeOptions(), []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

@@ -19,7 +19,9 @@ export function CalendarConnectionCard() {
   }
 
   useEffect(() => {
-    refreshStatus();
+    queueMicrotask(() => {
+      void refreshStatus();
+    });
   }, []);
 
   function connectGoogle() {

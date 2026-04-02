@@ -5,17 +5,19 @@ import { WeekTimeline } from "@/components/WeekTimeline";
 import { PersonalEventForm } from "@/components/PersonalEventForm";
 import { CalendarConnectionCard } from "@/components/CalendarConnectionCard";
 import { DEFAULT_USER_TIMEZONE } from "@/lib/datetimeDisplay";
+import type { CalendarDayMeta } from "@/lib/calendarMeta";
+import { emptyDayMeta, incrementMetaForWeeklyBlock, timelineSourceFromWeeklyBlockType } from "@/lib/calendarMeta";
 import { isValidTimeZone, zonedDateKey, zonedDateTimeToUtc } from "@/lib/timezone";
 
-type DayMeta = { external: number; classes: number; fixedHabits: number; generated: number; personal: number };
 type TimelineEvent = {
   id: string;
   starts_at: string;
   ends_at: string;
   title: string;
-  source: "external" | "class" | "fixed_habit" | "generated" | "personal";
+  source: "external" | "class" | "fixed_habit" | "flexible_habit" | "assignment" | "generated" | "personal";
   class_meeting_id?: string;
   class_id?: string;
+  fromWeeklyPlan?: boolean;
 };
 
 function dateOnly(value: string) {
@@ -64,7 +66,7 @@ export default async function CalendarPage({
       .eq("type", "fixed"),
     supabase
       .from("weekly_plan_blocks")
-      .select("id,starts_at,ends_at,title,origin")
+      .select("id,starts_at,ends_at,title,origin,block_type")
       .eq("user_id", user?.id)
       .eq("origin", "applied")
       .gte("starts_at", startIso)
@@ -83,7 +85,7 @@ export default async function CalendarPage({
       .lte("override_date", endIso.slice(0, 10)),
   ]);
 
-  const metaByDate: Record<string, DayMeta> = {};
+  const metaByDate: Record<string, CalendarDayMeta> = {};
   const dayEvents: TimelineEvent[] = [];
   const overrideByMeetingDate = new Map<string, { canceled: boolean; start?: string; end?: string }>();
 
@@ -96,7 +98,7 @@ export default async function CalendarPage({
   });
 
   const ensure = (d: string) => {
-    if (!metaByDate[d]) metaByDate[d] = { external: 0, classes: 0, fixedHabits: 0, generated: 0, personal: 0 };
+    if (!metaByDate[d]) metaByDate[d] = emptyDayMeta();
     return metaByDate[d];
   };
 
@@ -158,13 +160,15 @@ export default async function CalendarPage({
 
   (appliedRes.data ?? []).forEach((b) => {
     const d = dateOnly(b.starts_at as string);
-    ensure(d).generated += 1;
+    const bt = (b.block_type as string) ?? "assignment";
+    incrementMetaForWeeklyBlock(ensure(d), bt);
     dayEvents.push({
       id: b.id as string,
       starts_at: b.starts_at as string,
       ends_at: b.ends_at as string,
       title: b.title as string,
-      source: "generated",
+      source: timelineSourceFromWeeklyBlockType(bt),
+      fromWeeklyPlan: true,
     });
   });
 
@@ -205,10 +209,10 @@ export default async function CalendarPage({
       <CalendarConnectionCard />
 
       <div className="flex items-center justify-between gap-3">
-        <CalendarLegend />
+        <CalendarLegend variant="main" />
         <PersonalEventForm defaultDate={selectedDate} />
       </div>
-      <CalendarView year={year} month={month} selectedDate={selectedDate} dayMeta={metaByDate} basePath="/calendar" />
+      <CalendarView year={year} month={month} selectedDate={selectedDate} dayMeta={metaByDate} basePath="/calendar" showGeneratedDots={false} />
       <WeekTimeline date={selectedDate} events={selectedEvents} mode="main" timeZone={timeZone} />
     </div>
   );

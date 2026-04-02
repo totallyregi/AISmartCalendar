@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 
-export function PersonalEventForm({ defaultDate: _defaultDate }: { defaultDate: string }) {
+export function PersonalEventForm({ defaultDate }: { defaultDate: string }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
-  const [start, setStart] = useState("");
-  const [end, setEnd] = useState("");
+  const [start, setStart] = useState(`${defaultDate}T12:00`);
+  const [end, setEnd] = useState(`${defaultDate}T13:00`);
   const [loading, setLoading] = useState(false);
 
   async function submit(e: React.FormEvent) {
@@ -23,7 +23,15 @@ export function PersonalEventForm({ defaultDate: _defaultDate }: { defaultDate: 
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="rounded bg-zinc-900 px-3 py-2 text-sm text-white dark:bg-zinc-100 dark:text-zinc-900">
+      <button
+        type="button"
+        onClick={() => {
+          setStart(`${defaultDate}T12:00`);
+          setEnd(`${defaultDate}T13:00`);
+          setOpen(true);
+        }}
+        className="rounded bg-zinc-900 px-3 py-2 text-sm text-white dark:bg-zinc-100 dark:text-zinc-900"
+      >
         Add personal event
       </button>
     );

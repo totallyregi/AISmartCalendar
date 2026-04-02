@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { SchedulerMode } from "@/lib/types";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -42,25 +42,27 @@ export function DashboardPlanner({
   const [status, setStatus] = useState<PlannerStatus | null>(null);
   const [preferencesConfigured, setPreferencesConfigured] = useState(false);
 
-  async function loadDraft() {
+  const loadPreferenceState = useCallback(async () => {
+    const res = await fetch("/api/preferences/scheduler");
+    const data = await res.json().catch(() => ({}));
+    setPreferencesConfigured(!!data.configured);
+  }, []);
+
+  const loadDraft = useCallback(async () => {
     const res = await fetch(`/api/plans/weekly?weekStart=${nextWeekStart}`);
     const data = await res.json().catch(() => ({}));
     if (data.status) {
       setStatus(data.status as PlannerStatus);
       setNextWeekStart(String(data.status.nextWeekToGenerate ?? currentWeek));
     }
-  }
-
-  async function loadPreferenceState() {
-    const res = await fetch("/api/preferences/scheduler");
-    const data = await res.json().catch(() => ({}));
-    setPreferencesConfigured(!!data.configured);
-  }
+  }, [nextWeekStart, currentWeek]);
 
   useEffect(() => {
-    loadDraft();
-    loadPreferenceState();
-  }, [nextWeekStart]);
+    queueMicrotask(() => {
+      void loadDraft();
+      void loadPreferenceState();
+    });
+  }, [loadDraft, loadPreferenceState]);
 
   async function generateWeek() {
     setLoading(true);
