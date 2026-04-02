@@ -83,9 +83,22 @@ create table if not exists public.habit_fixed_slots (
 create table if not exists public.habit_flexible_rules (
   habit_id uuid primary key references public.habits(id) on delete cascade,
   duration_minutes int not null check (duration_minutes > 0 and duration_minutes % 15 = 0),
+  preference_mode text not null default 'preferred_days' check (preference_mode in ('preferred_days', 'times_per_week')),
   preferred_days smallint[] not null default '{}',
   times_per_week smallint,
-  check (times_per_week is null or (times_per_week >= 1 and times_per_week <= 7))
+  check (times_per_week is null or (times_per_week >= 1))
+);
+
+create table if not exists public.habit_flexible_preferred_slots (
+  id uuid primary key default gen_random_uuid(),
+  habit_id uuid not null references public.habits(id) on delete cascade,
+  day_of_week smallint not null check (day_of_week >= 0 and day_of_week <= 6),
+  start_time time not null,
+  end_time time not null,
+  created_at timestamptz not null default now(),
+  check (end_time > start_time),
+  check (extract(minute from start_time)::int % 15 = 0),
+  check (extract(minute from end_time)::int % 15 = 0)
 );
 
 create table if not exists public.external_calendars (
@@ -220,6 +233,17 @@ create table if not exists public.scheduler_preferred_windows (
 alter table public.scheduler_preferences
   add column if not exists timezone text not null default 'America/Chicago';
 
+alter table public.habit_flexible_rules
+  add column if not exists preference_mode text not null default 'preferred_days';
+
+alter table public.habit_flexible_rules
+  drop constraint if exists habit_flexible_rules_preference_mode_check,
+  add constraint habit_flexible_rules_preference_mode_check check (preference_mode in ('preferred_days', 'times_per_week'));
+
+alter table public.habit_flexible_rules
+  drop constraint if exists habit_flexible_rules_times_per_week_check,
+  add constraint habit_flexible_rules_times_per_week_check check (times_per_week is null or (times_per_week >= 1));
+
 alter table public.profiles enable row level security;
 alter table public.class_sections enable row level security;
 alter table public.class_meetings enable row level security;
@@ -227,6 +251,7 @@ alter table public.assignments enable row level security;
 alter table public.habits enable row level security;
 alter table public.habit_fixed_slots enable row level security;
 alter table public.habit_flexible_rules enable row level security;
+alter table public.habit_flexible_preferred_slots enable row level security;
 alter table public.external_calendars enable row level security;
 alter table public.external_events enable row level security;
 alter table public.weekly_plans enable row level security;
@@ -252,6 +277,8 @@ create policy "Users can CRUD own habits" on public.habits for all using (auth.u
 create policy "Users can CRUD own fixed slots" on public.habit_fixed_slots for all
 using (exists (select 1 from public.habits h where h.id = habit_id and h.user_id = auth.uid()));
 create policy "Users can CRUD own flexible rules" on public.habit_flexible_rules for all
+using (exists (select 1 from public.habits h where h.id = habit_id and h.user_id = auth.uid()));
+create policy "Users can CRUD own flexible preferred slots" on public.habit_flexible_preferred_slots for all
 using (exists (select 1 from public.habits h where h.id = habit_id and h.user_id = auth.uid()));
 create policy "Users can CRUD own external calendars" on public.external_calendars for all using (auth.uid() = user_id);
 create policy "Users can CRUD own external events" on public.external_events for all using (auth.uid() = user_id);

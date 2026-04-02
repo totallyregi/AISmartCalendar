@@ -161,7 +161,14 @@ export async function POST(request: Request) {
     supabase.from("user_events").select("starts_at,ends_at").eq("user_id", user.id).gte("starts_at", weekStartUtc.toISOString()).lt("starts_at", weekEndUtc.toISOString()),
     supabase.from("class_sections").select("class_meetings(day_of_week,start_time,end_time)").eq("user_id", user.id),
     supabase.from("habits").select("id,name,habit_fixed_slots(day_of_week,start_time,end_time)").eq("user_id", user.id).eq("type", "fixed").eq("active", true),
-    supabase.from("habits").select("id,name,habit_flexible_rules(duration_minutes,preferred_days,times_per_week)").eq("user_id", user.id).eq("type", "flexible").eq("active", true),
+    supabase
+      .from("habits")
+      .select(
+        "id,name,habit_flexible_rules(duration_minutes,preference_mode,preferred_days,times_per_week,habit_flexible_preferred_slots(day_of_week,start_time,end_time))"
+      )
+      .eq("user_id", user.id)
+      .eq("type", "flexible")
+      .eq("active", true),
     supabase.from("assignments").select("*").eq("user_id", user.id).neq("status", "done").order("due_at", { ascending: true }),
     supabase.from("scheduler_preferences").select("*").eq("user_id", user.id).single(),
     supabase.from("scheduler_preferred_windows").select("day_of_week,start_time,end_time,is_override").eq("user_id", user.id),
@@ -286,7 +293,7 @@ export async function POST(request: Request) {
           const end = slots[i + takeIntervals - 1].end;
           blocks.push({
             block_type: "assignment",
-            title: `Assignment: ${a.name}`,
+          title: a.name,
             starts_at: start.toISOString(),
             ends_at: end.toISOString(),
             assignment_id: a.id,
@@ -310,11 +317,17 @@ export async function POST(request: Request) {
   placeAssignmentPass(daySlots, true);
   placeAssignmentPass(overflowDaySlots, false);
 
-  // Flexible habits remain existing behavior (not constrained by assignment workload prefs).
+  // Flexible habits use mode-aware frequency and preferred-hour placement.
   const flexHabits = (flexHabitRes.data ?? []) as {
     id: string;
     name: string;
-    habit_flexible_rules: { duration_minutes: number; preferred_days: number[]; times_per_week: number | null }[];
+    habit_flexible_rules: {
+      duration_minutes: number;
+      preference_mode?: "preferred_days" | "times_per_week";
+      preferred_days: number[];
+      times_per_week: number | null;
+      habit_flexible_preferred_slots?: { day_of_week: number; start_time: string; end_time: string }[];
+    }[];
   }[];
 
   for (const h of flexHabits) {
@@ -322,20 +335,49 @@ export async function POST(request: Request) {
     if (!rule) continue;
 
     const duration = Math.max(15, Number(rule.duration_minutes || 60));
-    const timesPerWeek = Number(rule.times_per_week ?? (rule.preferred_days?.length || 1));
-    const targetDays = (rule.preferred_days ?? []).length ? new Set(rule.preferred_days) : null;
+    const mode = rule.preference_mode === "times_per_week" ? "times_per_week" : "preferred_days";
+    const preferredDays = [...new Set((rule.preferred_days ?? []).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))];
+    const slotsByDow = new Map<number, { day_of_week: number; start_time: string; end_time: string }[]>();
+    (rule.habit_flexible_preferred_slots ?? []).forEach((s) => {
+      if (!slotsByDow.has(s.day_of_week)) slotsByDow.set(s.day_of_week, []);
+      slotsByDow.get(s.day_of_week)?.push(s);
+    });
 
-    let placed = 0;
-    for (let i = 0; i < 7 && placed < timesPerWeek; i++) {
+    const dayKeyByDow = new Map<number, string>();
+    for (let i = 0; i < 7; i++) {
       const dayKey = addDaysToDateKey(weekStartDate, i);
-      const slots = daySlots.get(dayKey) ?? [];
+      dayKeyByDow.set(dayOfWeekFromDateKey(dayKey), dayKey);
+    }
+
+    const candidateDows = mode === "preferred_days" ? preferredDays : [0, 1, 2, 3, 4, 5, 6];
+    if (candidateDows.length === 0) continue;
+
+    const targetSessions =
+      mode === "times_per_week" ? Math.max(1, Number(rule.times_per_week ?? 1)) : candidateDows.length;
+    const base = Math.floor(targetSessions / candidateDows.length);
+    const remainder = targetSessions % candidateDows.length;
+    const sessionsByDow = new Map<number, number>();
+    candidateDows.forEach((dow, idx) => {
+      sessionsByDow.set(dow, base + (idx < remainder ? 1 : 0));
+    });
+
+    const needIntervals = Math.max(1, Math.floor(duration / 15));
+    for (const dow of candidateDows) {
+      const plannedSessions = sessionsByDow.get(dow) ?? 0;
+      if (plannedSessions <= 0) continue;
+      const dayKey = dayKeyByDow.get(dow);
+      if (!dayKey) continue;
+
+      const daySpecificWindows = slotsByDow.get(dow) ?? [];
+      const slots =
+        daySpecificWindows.length > 0
+          ? removeBusy(buildAllowedSlotsForDay(dayKey, daySpecificWindows, timeZone), mergedBusy).filter((slot) => slot.end > now)
+          : daySlots.get(dayKey) ?? [];
       const used = dayUsed.get(dayKey) ?? new Set<number>();
-      if (targetDays && !targetDays.has(dayOfWeekFromDateKey(dayKey))) continue;
+      let placed = 0;
 
-      for (let idx = 0; idx < slots.length && placed < timesPerWeek; idx++) {
+      for (let idx = 0; idx < slots.length && placed < plannedSessions; idx++) {
         if (isUsed(used, slots[idx])) continue;
-
-        const needIntervals = Math.max(1, Math.floor(duration / 15));
         const contiguous = contiguousCount(slots, idx);
         if (contiguous < needIntervals) continue;
 

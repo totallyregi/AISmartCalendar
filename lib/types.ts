@@ -50,8 +50,18 @@ export interface HabitFixedSlot {
 export interface HabitFlexibleRule {
   habit_id?: string;
   duration_minutes: number;
+  preference_mode?: "preferred_days" | "times_per_week";
   preferred_days: number[];
   times_per_week?: number | null;
+  habit_flexible_preferred_slots?: HabitFlexiblePreferredSlot[];
+}
+
+export interface HabitFlexiblePreferredSlot {
+  id?: string;
+  habit_id?: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
 }
 
 export interface WeeklyPlanBlock {

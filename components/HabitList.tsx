@@ -10,7 +10,13 @@ type HabitRow = {
   type: "fixed" | "flexible";
   active: boolean;
   habit_fixed_slots?: { day_of_week: number; start_time: string; end_time: string }[];
-  habit_flexible_rules?: { duration_minutes: number; preferred_days: number[]; times_per_week: number | null }[];
+  habit_flexible_rules?: {
+    duration_minutes: number;
+    preference_mode?: "preferred_days" | "times_per_week";
+    preferred_days: number[];
+    times_per_week: number | null;
+    habit_flexible_preferred_slots?: { day_of_week: number; start_time: string; end_time: string }[];
+  }[];
 };
 
 export function HabitList({ habits }: { habits: HabitRow[] }) {
@@ -30,6 +36,18 @@ export function HabitList({ habits }: { habits: HabitRow[] }) {
       <ul className="space-y-2">
         {habits.map((h) => {
           const flex = h.habit_flexible_rules?.[0];
+          const slotSummary =
+            flex?.habit_flexible_preferred_slots?.length
+              ? ` · hours: ${flex.habit_flexible_preferred_slots
+                  .map((s) => formatClassMeetingLine(s.day_of_week, s.start_time, s.end_time))
+                  .join(", ")}`
+              : "";
+          const flexSummary =
+            (flex?.preference_mode ?? "preferred_days") === "times_per_week"
+              ? `${flex?.duration_minutes ?? 0} min · ${flex?.times_per_week ?? 0}x/week${slotSummary}`
+              : `${flex?.duration_minutes ?? 0} min` +
+                `${flex?.preferred_days?.length ? ` · days: ${flex.preferred_days.map((d) => WEEKDAY_FULL[d]).join(", ")}` : ""}` +
+                `${slotSummary}`;
           return (
             <li key={h.id} className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
               <div className="flex items-center justify-between gap-4">
@@ -38,9 +56,7 @@ export function HabitList({ habits }: { habits: HabitRow[] }) {
                   <p className="text-sm text-zinc-500 dark:text-zinc-400">
                     {h.type === "fixed"
                       ? (h.habit_fixed_slots ?? []).map((s) => formatClassMeetingLine(s.day_of_week, s.start_time, s.end_time)).join(" · ") || "No fixed slots"
-                      : `${flex?.duration_minutes ?? 0} min` +
-                        `${flex?.times_per_week ? ` · ${flex.times_per_week}x/week` : ""}` +
-                        `${flex?.preferred_days?.length ? ` · days: ${flex.preferred_days.map((d) => WEEKDAY_FULL[d]).join(", ")}` : ""}`}
+                      : flexSummary}
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -50,7 +66,7 @@ export function HabitList({ habits }: { habits: HabitRow[] }) {
                       await fetch(`/api/habits/${h.id}`, {
                         method: "PUT",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ ...h, active: !h.active }),
+                        body: JSON.stringify({ active: !h.active }),
                       });
                       window.location.reload();
                     }}
