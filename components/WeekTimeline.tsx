@@ -49,6 +49,59 @@ export function WeekTimeline({ date, events, mode }: { date: string; events: Eve
     window.location.reload();
   }
 
+  async function editGeneratedMain(e: Event) {
+    const title = prompt("Edit title", e.title) ?? e.title;
+    const starts = prompt("Start datetime (ISO)", e.starts_at) ?? e.starts_at;
+    const ends = prompt("End datetime (ISO)", e.ends_at) ?? e.ends_at;
+    await fetch(`/api/weekly-plan-blocks/${e.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, starts_at: starts, ends_at: ends }),
+    });
+    window.location.reload();
+  }
+
+  async function deleteGeneratedMain(e: Event) {
+    if (!confirm("Delete this generated event from Calendar?")) return;
+    await fetch(`/api/weekly-plan-blocks/${e.id}`, { method: "DELETE" });
+    window.location.reload();
+  }
+
+  async function editFixedHabit(e: Event) {
+    const start = prompt("Start time HH:MM:SS", "12:00:00") ?? "12:00:00";
+    const end = prompt("End time HH:MM:SS", "13:00:00") ?? "13:00:00";
+    await fetch(`/api/habit-fixed-slots/${e.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ start_time: start, end_time: end }),
+    });
+    window.location.reload();
+  }
+
+  async function deleteFixedHabit(e: Event) {
+    if (!confirm("Delete this fixed habit slot?")) return;
+    await fetch(`/api/habit-fixed-slots/${e.id}`, { method: "DELETE" });
+    window.location.reload();
+  }
+
+  async function editExternal(e: Event) {
+    const summary = prompt("Event title", e.title) ?? e.title;
+    const starts = prompt("Start datetime (ISO)", e.starts_at) ?? e.starts_at;
+    const ends = prompt("End datetime (ISO)", e.ends_at) ?? e.ends_at;
+    await fetch(`/api/external-events/${e.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ summary, starts_at: starts, ends_at: ends }),
+    });
+    window.location.reload();
+  }
+
+  async function deleteExternal(e: Event) {
+    if (!confirm("Delete this imported event from app calendar? (Sync may add it back)")) return;
+    await fetch(`/api/external-events/${e.id}`, { method: "DELETE" });
+    window.location.reload();
+  }
+
   async function deletePersonal(e: Event) {
     if (!confirm("Delete personal event?")) return;
     await fetch(`/api/user-events/${e.id}`, { method: "DELETE" });
@@ -124,6 +177,24 @@ export function WeekTimeline({ date, events, mode }: { date: string; events: Eve
                   <>
                     <button onClick={() => cancelClassForDate(e)} className="rounded border border-red-300 px-2 py-1 text-red-600 dark:border-red-700">Cancel this date</button>
                     <button onClick={() => editClassForDate(e)} className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600">Edit this date</button>
+                  </>
+                )}
+                {mode === "main" && e.source === "generated" && (
+                  <>
+                    <button onClick={() => editGeneratedMain(e)} className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600">Edit</button>
+                    <button onClick={() => deleteGeneratedMain(e)} className="rounded border border-red-300 px-2 py-1 text-red-600 dark:border-red-700">Delete</button>
+                  </>
+                )}
+                {mode === "main" && e.source === "fixed_habit" && (
+                  <>
+                    <button onClick={() => editFixedHabit(e)} className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600">Edit</button>
+                    <button onClick={() => deleteFixedHabit(e)} className="rounded border border-red-300 px-2 py-1 text-red-600 dark:border-red-700">Delete</button>
+                  </>
+                )}
+                {mode === "main" && e.source === "external" && (
+                  <>
+                    <button onClick={() => editExternal(e)} className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600">Edit</button>
+                    <button onClick={() => deleteExternal(e)} className="rounded border border-red-300 px-2 py-1 text-red-600 dark:border-red-700">Delete</button>
                   </>
                 )}
               </div>

@@ -67,7 +67,7 @@ export function DashboardPlanner({
     const res = await fetch("/api/plans/weekly/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ weekStart, mode }),
+      body: JSON.stringify({ weekStart, mode, timezoneOffsetMinutes: new Date().getTimezoneOffset() }),
     });
     const data = await res.json().catch(() => ({}));
     setLoading(false);

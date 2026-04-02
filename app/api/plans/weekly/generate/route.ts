@@ -18,11 +18,17 @@ function toIsoDate(d: Date) {
   return d.toISOString().slice(0, 10);
 }
 
+function toUserDateTime(day: Date, hhmmss: string, tzOffsetMinutes: number) {
+  const serverLocal = toDateTime(day, hhmmss);
+  return new Date(serverLocal.getTime() + tzOffsetMinutes * 60 * 1000);
+}
+
 function pushBusyFromRecurring(
   busy: Interval[],
   weekStart: Date,
   classRows: { class_meetings: { day_of_week: number; start_time: string; end_time: string }[] }[],
-  fixedHabitRows: { habit_fixed_slots: { day_of_week: number; start_time: string; end_time: string }[] }[]
+  fixedHabitRows: { habit_fixed_slots: { day_of_week: number; start_time: string; end_time: string }[] }[],
+  tzOffsetMinutes: number
 ) {
   for (let i = 0; i < 7; i++) {
     const day = addDays(weekStart, i);
@@ -30,23 +36,23 @@ function pushBusyFromRecurring(
 
     classRows.forEach((c) => {
       (c.class_meetings ?? []).forEach((m) => {
-        if (m.day_of_week === dow) busy.push({ start: toDateTime(day, m.start_time), end: toDateTime(day, m.end_time) });
+        if (m.day_of_week === dow) busy.push({ start: toUserDateTime(day, m.start_time, tzOffsetMinutes), end: toUserDateTime(day, m.end_time, tzOffsetMinutes) });
       });
     });
 
     fixedHabitRows.forEach((h) => {
       (h.habit_fixed_slots ?? []).forEach((s) => {
-        if (s.day_of_week === dow) busy.push({ start: toDateTime(day, s.start_time), end: toDateTime(day, s.end_time) });
+        if (s.day_of_week === dow) busy.push({ start: toUserDateTime(day, s.start_time, tzOffsetMinutes), end: toUserDateTime(day, s.end_time, tzOffsetMinutes) });
       });
     });
   }
 }
 
-function buildAllowedSlotsForDay(day: Date, dayWindows: { start_time: string; end_time: string }[]) {
+function buildAllowedSlotsForDay(day: Date, dayWindows: { start_time: string; end_time: string }[], tzOffsetMinutes: number) {
   const slots: Interval[] = [];
   for (const w of dayWindows) {
-    const s = toDateTime(day, w.start_time);
-    const e = toDateTime(day, w.end_time);
+    const s = toUserDateTime(day, w.start_time, tzOffsetMinutes);
+    const e = toUserDateTime(day, w.end_time, tzOffsetMinutes);
     for (let t = s.getTime(); t < e.getTime(); t += 15 * 60 * 1000) {
       const start = new Date(t);
       const end = new Date(t + 15 * 60 * 1000);
@@ -91,6 +97,7 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => ({}));
   const mode: Mode = ["intense", "relaxed", "lazy"].includes(body.mode) ? body.mode : "relaxed";
+  const tzOffsetMinutes = Number(body.timezoneOffsetMinutes ?? 0);
   const requested = typeof body.weekStart === "string" ? new Date(`${body.weekStart}T00:00:00`) : weekStartSunday(new Date());
   const weekStart = weekStartSunday(requested);
   const weekEnd = addDays(weekStart, 7);
@@ -143,7 +150,8 @@ export async function POST(request: Request) {
     busy,
     weekStart,
     (classRes.data ?? []) as { class_meetings: { day_of_week: number; start_time: string; end_time: string }[] }[],
-    (fixedHabitRes.data ?? []) as { habit_fixed_slots: { day_of_week: number; start_time: string; end_time: string }[] }[]
+    (fixedHabitRes.data ?? []) as { habit_fixed_slots: { day_of_week: number; start_time: string; end_time: string }[] }[],
+    Number.isNaN(tzOffsetMinutes) ? 0 : tzOffsetMinutes
   );
 
   const mergedBusy = mergeIntervals(busy);
@@ -161,7 +169,7 @@ export async function POST(request: Request) {
       dayWindows = applyDays.has(dow) ? globalWindows : [];
     }
 
-    const allowed = dayWindows.length ? buildAllowedSlotsForDay(day, dayWindows) : [];
+    const allowed = dayWindows.length ? buildAllowedSlotsForDay(day, dayWindows, Number.isNaN(tzOffsetMinutes) ? 0 : tzOffsetMinutes) : [];
     const free = removeBusy(allowed, mergedBusy);
     daySlots.set(dateKey, free);
     dayUsed.set(dateKey, new Set<number>());
