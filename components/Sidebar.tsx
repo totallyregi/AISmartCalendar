@@ -6,7 +6,13 @@ import { useEffect, useState } from "react";
 
 type ClassItem = { id: string; class_code: string; class_name: string };
 
-export function Sidebar({ collapsed }: { collapsed: boolean }) {
+export function Sidebar({
+  collapsed,
+  onToggle,
+}: {
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
   const pathname = usePathname();
   const [classesOpen, setClassesOpen] = useState(true);
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -24,12 +30,24 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
     "sidebar-link block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors";
 
   return (
-    <aside
-      className={`sidebar fixed left-0 top-0 z-30 flex h-full w-64 flex-col border-r border-zinc-200 bg-white transition-transform duration-200 dark:border-zinc-800 dark:bg-zinc-900 ${
-        collapsed ? "-translate-x-full" : "translate-x-0"
-      }`}
-      aria-hidden={collapsed}
-    >
+    <>
+      <aside
+        className={`sidebar fixed left-0 top-0 z-30 flex h-full w-64 flex-col border-r border-zinc-200 bg-white transition-transform duration-200 dark:border-zinc-800 dark:bg-zinc-900 ${
+          collapsed ? "-translate-x-full" : "translate-x-0"
+        }`}
+        aria-hidden={collapsed}
+      >
+        <button
+          type="button"
+          onClick={onToggle}
+          className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-md border border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          aria-label="Collapse sidebar"
+          title="Collapse sidebar"
+        >
+          <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path d="M12 5l-5 5 5 5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
       <div className="flex h-14 shrink-0 items-center border-b border-zinc-200 px-4 dark:border-zinc-800">
         <Link
           href="/dashboard"
@@ -148,6 +166,20 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
           Privacy
         </Link>
       </div>
-    </aside>
+      </aside>
+      {collapsed && (
+        <button
+          type="button"
+          onClick={onToggle}
+          className="fixed left-2 top-2 z-30 inline-flex h-8 w-8 items-center justify-center rounded-md border border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          aria-label="Expand sidebar"
+          title="Expand sidebar"
+        >
+          <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path d="M8 5l5 5-5 5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      )}
+    </>
   );
 }

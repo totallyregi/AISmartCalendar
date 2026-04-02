@@ -90,6 +90,19 @@ export function CalendarView({
     });
   }
 
+  function localSortMinutes(iso: string) {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+    }).formatToParts(new Date(iso));
+    const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+    const h = Number(map.hour ?? "0");
+    const m = Number(map.minute ?? "0");
+    return h * 60 + m;
+  }
+
   return (
     <div className="animate-in">
       <div className="mb-4 flex items-center justify-between">
@@ -123,8 +136,13 @@ export function CalendarView({
             const meta = dayMeta[cell.date] ?? emptyDayMeta();
             const isToday = cell.date === today;
             const isSelected = cell.date === selectedDate;
-            const previews = (dayPreview[cell.date] ?? []).slice(0, previewLimit);
-            const hiddenCount = Math.max(0, (dayPreview[cell.date] ?? []).length - previews.length);
+            const dayPreviews = [...(dayPreview[cell.date] ?? [])].sort((a, b) => {
+              const byLocal = localSortMinutes(a.starts_at) - localSortMinutes(b.starts_at);
+              if (byLocal !== 0) return byLocal;
+              return a.starts_at.localeCompare(b.starts_at);
+            });
+            const previews = dayPreviews.slice(0, previewLimit);
+            const hiddenCount = Math.max(0, dayPreviews.length - previews.length);
 
             return (
               <Link
