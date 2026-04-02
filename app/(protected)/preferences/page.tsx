@@ -22,23 +22,23 @@ type WindowRow = {
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const TIMEZONES = [
-  "UTC",
-  "Asia/Singapore",
-  "Asia/Kuala_Lumpur",
-  "Asia/Tokyo",
-  "Asia/Seoul",
-  "Asia/Shanghai",
-  "Asia/Bangkok",
-  "Asia/Kolkata",
-  "Australia/Sydney",
-  "Europe/London",
-  "Europe/Paris",
-  "Europe/Berlin",
-  "America/New_York",
-  "America/Chicago",
-  "America/Denver",
-  "America/Los_Angeles",
-  "America/Toronto",
+  { value: "UTC", label: "UTC+00:00 (UTC, London winter)" },
+  { value: "America/Los_Angeles", label: "UTC-08:00 (Los Angeles, Vancouver)" },
+  { value: "America/Denver", label: "UTC-07:00 (Denver, Phoenix*)" },
+  { value: "America/Chicago", label: "UTC-06:00 (Chicago, New Orleans)" },
+  { value: "America/New_York", label: "UTC-05:00 (New York, Toronto)" },
+  { value: "America/Toronto", label: "UTC-05:00 (Toronto)" },
+  { value: "Europe/London", label: "UTC+00:00 (London)" },
+  { value: "Europe/Paris", label: "UTC+01:00 (Paris)" },
+  { value: "Europe/Berlin", label: "UTC+01:00 (Berlin)" },
+  { value: "Asia/Bangkok", label: "UTC+07:00 (Bangkok, Jakarta)" },
+  { value: "Asia/Shanghai", label: "UTC+08:00 (Beijing, Shanghai)" },
+  { value: "Asia/Singapore", label: "UTC+08:00 (Singapore, Kuala Lumpur)" },
+  { value: "Asia/Kuala_Lumpur", label: "UTC+08:00 (Kuala Lumpur)" },
+  { value: "Asia/Seoul", label: "UTC+09:00 (Seoul)" },
+  { value: "Asia/Tokyo", label: "UTC+09:00 (Tokyo)" },
+  { value: "Australia/Sydney", label: "UTC+10:00 (Sydney)" },
+  { value: "Asia/Kolkata", label: "UTC+05:30 (India - Kolkata)" },
 ];
 
 const defaultPref: Preference = {
@@ -179,8 +179,8 @@ export default function PreferencesPage() {
                 className="w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800"
               >
                 {TIMEZONES.map((tz) => (
-                  <option key={tz} value={tz}>
-                    {tz}
+                  <option key={tz.value} value={tz.value}>
+                    {tz.label}
                   </option>
                 ))}
               </select>
