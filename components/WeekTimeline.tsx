@@ -175,8 +175,8 @@ export function WeekTimeline({ date, events, mode }: { date: string; events: Eve
                 )}
                 {mode === "main" && e.source === "class" && e.class_meeting_id && (
                   <>
-                    <button onClick={() => cancelClassForDate(e)} className="rounded border border-red-300 px-2 py-1 text-red-600 dark:border-red-700">Cancel this date</button>
-                    <button onClick={() => editClassForDate(e)} className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600">Edit this date</button>
+                    <button onClick={() => editClassForDate(e)} className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600">Edit</button>
+                    <button onClick={() => cancelClassForDate(e)} className="rounded border border-red-300 px-2 py-1 text-red-600 dark:border-red-700">Delete</button>
                   </>
                 )}
                 {mode === "main" && e.source === "generated" && (

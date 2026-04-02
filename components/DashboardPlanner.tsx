@@ -15,6 +15,19 @@ function isoDate(d: Date) {
   return d.toISOString().slice(0, 10);
 }
 
+function addDays(date: Date, days: number) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function formatWeekLabel(weekStart: string) {
+  const start = new Date(`${weekStart}T00:00:00`);
+  const end = addDays(start, 6);
+  const fmt = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  return `${weekStart} (${fmt.format(start)} to ${fmt.format(end)})`;
+}
+
 type Block = { id: string; title: string; starts_at: string; ends_at: string; block_type: string };
 
 export function DashboardPlanner({
@@ -34,14 +47,20 @@ export function DashboardPlanner({
 
   const weekOptions = useMemo(() => {
     const out: string[] = [];
-    const base = sundayStart(new Date(currentWeek));
+    const base = sundayStart(new Date());
     for (let i = 0; i < 8; i++) {
       const d = new Date(base);
       d.setDate(d.getDate() + i * 7);
       out.push(isoDate(d));
     }
     return out;
-  }, [currentWeek]);
+  }, []);
+
+  useEffect(() => {
+    if (!weekOptions.includes(weekStart)) {
+      setWeekStart(weekOptions[0]);
+    }
+  }, [weekOptions, weekStart]);
 
   async function loadDraft() {
     const res = await fetch(`/api/plans/weekly?weekStart=${weekStart}`);
@@ -67,7 +86,12 @@ export function DashboardPlanner({
     const res = await fetch("/api/plans/weekly/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ weekStart, mode, timezoneOffsetMinutes: new Date().getTimezoneOffset() }),
+      body: JSON.stringify({
+        weekStart,
+        mode,
+        timezoneOffsetMinutes: new Date().getTimezoneOffset(),
+        nowIso: new Date().toISOString(),
+      }),
     });
     const data = await res.json().catch(() => ({}));
     setLoading(false);
@@ -114,7 +138,7 @@ export function DashboardPlanner({
           <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Week start (Sunday)</label>
             <select value={weekStart} onChange={(e) => setWeekStart(e.target.value)} className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">
-              {weekOptions.map((w) => <option key={w} value={w}>{w}</option>)}
+              {weekOptions.map((w) => <option key={w} value={w}>{formatWeekLabel(w)}</option>)}
             </select>
             <label className="mt-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Mode</label>
             <select value={mode} onChange={(e) => setMode(e.target.value as SchedulerMode)} className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">

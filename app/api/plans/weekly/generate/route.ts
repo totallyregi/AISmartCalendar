@@ -98,6 +98,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const mode: Mode = ["intense", "relaxed", "lazy"].includes(body.mode) ? body.mode : "relaxed";
   const tzOffsetMinutes = Number(body.timezoneOffsetMinutes ?? 0);
+  const now = typeof body.nowIso === "string" ? new Date(body.nowIso) : new Date();
   const requested = typeof body.weekStart === "string" ? new Date(`${body.weekStart}T00:00:00`) : weekStartSunday(new Date());
   const weekStart = weekStartSunday(requested);
   const weekEnd = addDays(weekStart, 7);
@@ -170,7 +171,7 @@ export async function POST(request: Request) {
     }
 
     const allowed = dayWindows.length ? buildAllowedSlotsForDay(day, dayWindows, Number.isNaN(tzOffsetMinutes) ? 0 : tzOffsetMinutes) : [];
-    const free = removeBusy(allowed, mergedBusy);
+    const free = removeBusy(allowed, mergedBusy).filter((slot) => slot.end > now);
     daySlots.set(dateKey, free);
     dayUsed.set(dateKey, new Set<number>());
     dayAssignedMinutes.set(dateKey, 0);
