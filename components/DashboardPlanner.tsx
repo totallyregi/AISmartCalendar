@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { SchedulerMode } from "@/lib/types";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 function sundayStart(date: Date) {
   const d = new Date(date);
@@ -37,6 +38,7 @@ export function DashboardPlanner({
   currentWeek: string;
   hasCurrentPlan: boolean;
 }) {
+  const router = useRouter();
   const [weekStart, setWeekStart] = useState(currentWeek);
   const [mode, setMode] = useState<SchedulerMode>("relaxed");
   const [loading, setLoading] = useState(false);
@@ -102,6 +104,7 @@ export function DashboardPlanner({
     const hours = Number(data.assignmentMinutes ?? 0) / 60;
     setMessage(`Generated ${data.blocks ?? 0} suggested blocks (${hours.toFixed(1)}h assignment time) for week ${data.weekStart} in ${data.mode ?? mode} mode`);
     await loadDraft();
+    router.refresh();
   }
 
   async function applyToCalendar() {
