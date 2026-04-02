@@ -196,6 +196,7 @@ create table if not exists public.scheduler_preferences (
   max_consecutive_minutes int not null default 120 check (max_consecutive_minutes > 0 and max_consecutive_minutes % 15 = 0),
   break_minutes int not null default 30 check (break_minutes >= 0 and break_minutes % 15 = 0),
   default_apply_days smallint[] not null default '{1,2,3,4,5}',
+  timezone text not null default 'UTC',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check (min_daily_minutes <= preferred_daily_minutes),
@@ -215,6 +216,9 @@ create table if not exists public.scheduler_preferred_windows (
   check (extract(minute from start_time)::int % 15 = 0),
   check (extract(minute from end_time)::int % 15 = 0)
 );
+
+alter table public.scheduler_preferences
+  add column if not exists timezone text not null default 'UTC';
 
 alter table public.profiles enable row level security;
 alter table public.class_sections enable row level security;

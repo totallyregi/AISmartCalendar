@@ -20,7 +20,7 @@ const sourceCls: Record<Event["source"], string> = {
   personal: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
 };
 
-export function WeekTimeline({ date, events, mode }: { date: string; events: Event[]; mode: "main" | "ai" }) {
+export function WeekTimeline({ date, events, mode, timeZone = "UTC" }: { date: string; events: Event[]; mode: "main" | "ai"; timeZone?: string }) {
   const sortedEvents = useMemo(
     () => [...events].sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()),
     [events]
@@ -159,9 +159,9 @@ export function WeekTimeline({ date, events, mode }: { date: string; events: Eve
               <div className="flex items-center gap-2 text-sm">
                 <span className={`rounded px-1.5 py-0.5 text-xs capitalize ${sourceCls[e.source]}`}>{e.source.replace("_", " ")}</span>
                 <span className="text-zinc-700 dark:text-zinc-300">
-                  {new Date(e.starts_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  {new Date(e.starts_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone })}
                   {" - "}
-                  {new Date(e.ends_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  {new Date(e.ends_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone })}
                   {" · "}
                   {e.title}
                 </span>

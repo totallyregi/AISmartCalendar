@@ -74,6 +74,7 @@ export interface SchedulerPreference {
   max_consecutive_minutes: number;
   break_minutes: number;
   default_apply_days: number[];
+  timezone: string;
 }
 
 export interface SchedulerPreferredWindow {

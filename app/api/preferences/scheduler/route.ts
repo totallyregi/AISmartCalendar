@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { isValidTimeZone } from "@/lib/timezone";
 
 const DEFAULT_DAYS = [1, 2, 3, 4, 5];
 
@@ -22,6 +23,7 @@ async function ensurePreference(supabase: Awaited<ReturnType<typeof createClient
       max_consecutive_minutes: 120,
       break_minutes: 30,
       default_apply_days: DEFAULT_DAYS,
+      timezone: "UTC",
     })
     .select("*")
     .single();
@@ -74,6 +76,7 @@ export async function PUT(request: Request) {
   const defaultDays = Array.isArray(body.default_apply_days)
     ? (body.default_apply_days as unknown[]).map((d: unknown) => Number(d))
     : DEFAULT_DAYS;
+  const timezone = typeof body.timezone === "string" ? body.timezone : "UTC";
 
   if ([min, preferred, max, maxConsecutive, breakMinutes].some((v) => Number.isNaN(v) || v < 0 || v % 15 !== 0)) {
     return NextResponse.json({ error: "All minute values must be non-negative and in 15-minute increments" }, { status: 400 });
@@ -85,6 +88,9 @@ export async function PUT(request: Request) {
   const days = [...new Set(defaultDays)].filter((d) => Number.isInteger(d) && d >= 0 && d <= 6);
   if (days.length === 0) {
     return NextResponse.json({ error: "At least one apply day is required" }, { status: 400 });
+  }
+  if (!isValidTimeZone(timezone)) {
+    return NextResponse.json({ error: "Invalid timezone. Use an IANA timezone like Asia/Singapore" }, { status: 400 });
   }
 
   const { data, error } = await supabase
@@ -98,6 +104,7 @@ export async function PUT(request: Request) {
         max_consecutive_minutes: maxConsecutive,
         break_minutes: breakMinutes,
         default_apply_days: days,
+        timezone,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id" }

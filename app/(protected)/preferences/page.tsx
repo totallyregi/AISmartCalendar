@@ -9,6 +9,7 @@ type Preference = {
   max_consecutive_minutes: number;
   break_minutes: number;
   default_apply_days: number[];
+  timezone: string;
 };
 
 type WindowRow = {
@@ -28,6 +29,7 @@ const defaultPref: Preference = {
   max_consecutive_minutes: 120,
   break_minutes: 30,
   default_apply_days: [1, 2, 3, 4, 5],
+  timezone: "UTC",
 };
 
 export default function PreferencesPage() {
@@ -149,6 +151,23 @@ export default function PreferencesPage() {
             <select value={pref.break_minutes} onChange={(e) => setPref((p) => ({ ...p, break_minutes: Number(e.target.value) }))} className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">
               {[0, 15, 30, 45, 60, 75, 90].map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
+          </label>
+          <label className="text-sm text-zinc-700 dark:text-zinc-300">Timezone
+            <div className="mt-1 flex gap-2">
+              <input
+                value={pref.timezone}
+                onChange={(e) => setPref((p) => ({ ...p, timezone: e.target.value }))}
+                placeholder="e.g. Asia/Singapore"
+                className="w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800"
+              />
+              <button
+                type="button"
+                onClick={() => setPref((p) => ({ ...p, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC" }))}
+                className="rounded border border-zinc-300 px-3 py-2 text-xs dark:border-zinc-600"
+              >
+                Detect
+              </button>
+            </div>
           </label>
         </div>
 

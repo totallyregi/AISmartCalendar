@@ -4,6 +4,7 @@ import { CalendarView } from "@/components/CalendarView";
 import { WeekTimeline } from "@/components/WeekTimeline";
 import { PersonalEventForm } from "@/components/PersonalEventForm";
 import { CalendarConnectionCard } from "@/components/CalendarConnectionCard";
+import { isValidTimeZone, zonedDateKey, zonedDateTimeToUtc } from "@/lib/timezone";
 
 type DayMeta = { external: number; classes: number; fixedHabits: number; generated: number; personal: number };
 type TimelineEvent = {
@@ -20,11 +21,6 @@ function dateOnly(value: string) {
   return value.slice(0, 10);
 }
 
-function toDateTimeLocalIso(date: Date, hhmmss: string) {
-  const d = date.toISOString().slice(0, 10);
-  return new Date(`${d}T${hhmmss}`).toISOString();
-}
-
 export default async function CalendarPage({
   searchParams,
 }: {
@@ -37,9 +33,12 @@ export default async function CalendarPage({
 
   const params = await searchParams;
   const now = new Date();
+  const prefTzRes = await supabase.from("scheduler_preferences").select("timezone").eq("user_id", user?.id).single();
+  const preferredTimeZone = (prefTzRes.data?.timezone as string | undefined) ?? "UTC";
+  const timeZone = isValidTimeZone(preferredTimeZone) ? preferredTimeZone : "UTC";
   const year = params.year ? Number(params.year) : now.getFullYear();
   const month = params.month ? Number(params.month) : now.getMonth() + 1;
-  const selectedDate = params.date ?? now.toISOString().slice(0, 10);
+  const selectedDate = params.date ?? zonedDateKey(now, timeZone);
 
   const monthStart = new Date(year, month - 1, 1);
   const monthEnd = new Date(year, month, 0, 23, 59, 59);
@@ -131,8 +130,8 @@ export default async function CalendarPage({
         dayEvents.push({
           id: m.id,
           class_meeting_id: m.id,
-          starts_at: toDateTimeLocalIso(dt, startTime),
-          ends_at: toDateTimeLocalIso(dt, endTime),
+          starts_at: zonedDateTimeToUtc(d, startTime, timeZone).toISOString(),
+          ends_at: zonedDateTimeToUtc(d, endTime, timeZone).toISOString(),
           title: `${c.class_code} ${c.class_name}`,
           source: "class",
           class_id: c.id as string,
@@ -146,8 +145,8 @@ export default async function CalendarPage({
           ensure(d).fixedHabits += 1;
           dayEvents.push({
             id: s.id,
-            starts_at: toDateTimeLocalIso(dt, s.start_time),
-            ends_at: toDateTimeLocalIso(dt, s.end_time),
+            starts_at: zonedDateTimeToUtc(d, s.start_time, timeZone).toISOString(),
+            ends_at: zonedDateTimeToUtc(d, s.end_time, timeZone).toISOString(),
             title: h.name as string,
             source: "fixed_habit",
           });
@@ -209,7 +208,7 @@ export default async function CalendarPage({
         <PersonalEventForm defaultDate={selectedDate} />
       </div>
       <CalendarView year={year} month={month} selectedDate={selectedDate} dayMeta={metaByDate} basePath="/calendar" />
-      <WeekTimeline date={selectedDate} events={selectedEvents} mode="main" />
+      <WeekTimeline date={selectedDate} events={selectedEvents} mode="main" timeZone={timeZone} />
     </div>
   );
 }

@@ -1,58 +1,45 @@
 import { createClient } from "@/lib/supabase/server";
 import {
-  addDays,
-  buildDaySlots,
-  dayDateKey,
   mergeIntervals,
   minutesBetween,
   removeBusy,
-  toDateTime,
-  weekStartSunday,
   type Interval,
 } from "@/lib/scheduler/weekly";
 import { NextResponse } from "next/server";
+import { addDaysToDateKey, dayOfWeekFromDateKey, isValidTimeZone, weekStartSundayDateKey, zonedDateTimeToUtc } from "@/lib/timezone";
 
 type Mode = "intense" | "relaxed" | "lazy";
 
-function toIsoDate(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
-
-function toUserDateTime(day: Date, hhmmss: string, tzOffsetMinutes: number) {
-  const serverLocal = toDateTime(day, hhmmss);
-  return new Date(serverLocal.getTime() + tzOffsetMinutes * 60 * 1000);
-}
-
 function pushBusyFromRecurring(
   busy: Interval[],
-  weekStart: Date,
+  weekStartDate: string,
   classRows: { class_meetings: { day_of_week: number; start_time: string; end_time: string }[] }[],
   fixedHabitRows: { habit_fixed_slots: { day_of_week: number; start_time: string; end_time: string }[] }[],
-  tzOffsetMinutes: number
+  timeZone: string
 ) {
   for (let i = 0; i < 7; i++) {
-    const day = addDays(weekStart, i);
-    const dow = day.getDay();
+    const dayKey = addDaysToDateKey(weekStartDate, i);
+    const dow = dayOfWeekFromDateKey(dayKey);
 
     classRows.forEach((c) => {
       (c.class_meetings ?? []).forEach((m) => {
-        if (m.day_of_week === dow) busy.push({ start: toUserDateTime(day, m.start_time, tzOffsetMinutes), end: toUserDateTime(day, m.end_time, tzOffsetMinutes) });
+        if (m.day_of_week === dow) busy.push({ start: zonedDateTimeToUtc(dayKey, m.start_time, timeZone), end: zonedDateTimeToUtc(dayKey, m.end_time, timeZone) });
       });
     });
 
     fixedHabitRows.forEach((h) => {
       (h.habit_fixed_slots ?? []).forEach((s) => {
-        if (s.day_of_week === dow) busy.push({ start: toUserDateTime(day, s.start_time, tzOffsetMinutes), end: toUserDateTime(day, s.end_time, tzOffsetMinutes) });
+        if (s.day_of_week === dow) busy.push({ start: zonedDateTimeToUtc(dayKey, s.start_time, timeZone), end: zonedDateTimeToUtc(dayKey, s.end_time, timeZone) });
       });
     });
   }
 }
 
-function buildAllowedSlotsForDay(day: Date, dayWindows: { start_time: string; end_time: string }[], tzOffsetMinutes: number) {
+function buildAllowedSlotsForDay(dayKey: string, dayWindows: { start_time: string; end_time: string }[], timeZone: string) {
   const slots: Interval[] = [];
   for (const w of dayWindows) {
-    const s = toUserDateTime(day, w.start_time, tzOffsetMinutes);
-    const e = toUserDateTime(day, w.end_time, tzOffsetMinutes);
+    const s = zonedDateTimeToUtc(dayKey, w.start_time, timeZone);
+    const e = zonedDateTimeToUtc(dayKey, w.end_time, timeZone);
     for (let t = s.getTime(); t < e.getTime(); t += 15 * 60 * 1000) {
       const start = new Date(t);
       const end = new Date(t + 15 * 60 * 1000);
@@ -97,19 +84,26 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => ({}));
   const mode: Mode = ["intense", "relaxed", "lazy"].includes(body.mode) ? body.mode : "relaxed";
-  const tzOffsetMinutes = Number(body.timezoneOffsetMinutes ?? 0);
-  const now = typeof body.nowIso === "string" ? new Date(body.nowIso) : new Date();
-  const requested = typeof body.weekStart === "string" ? new Date(`${body.weekStart}T00:00:00`) : weekStartSunday(new Date());
-  const weekStart = weekStartSunday(requested);
-  const weekEnd = addDays(weekStart, 7);
+  const now = new Date();
 
-  const currentWeekStart = weekStartSunday(new Date());
-  if (weekStart.getTime() < currentWeekStart.getTime()) {
+  const prefQuick = await supabase.from("scheduler_preferences").select("timezone").eq("user_id", user.id).single();
+  const timeZone = (prefQuick.data?.timezone as string | undefined) ?? "UTC";
+  if (!isValidTimeZone(timeZone)) {
+    return NextResponse.json({ error: "Invalid timezone in preferences. Update Preferences first." }, { status: 400 });
+  }
+
+  const weekStartDate = typeof body.weekStart === "string" ? body.weekStart : weekStartSundayDateKey(now, timeZone);
+  const weekEndDate = addDaysToDateKey(weekStartDate, 7);
+  const weekStartUtc = zonedDateTimeToUtc(weekStartDate, "00:00:00", timeZone);
+  const weekEndUtc = zonedDateTimeToUtc(weekEndDate, "00:00:00", timeZone);
+
+  const currentWeekStart = weekStartSundayDateKey(now, timeZone);
+  if (weekStartDate < currentWeekStart) {
     return NextResponse.json({ error: "Cannot generate past weeks" }, { status: 400 });
   }
 
-  if (weekStart.getTime() > currentWeekStart.getTime()) {
-    const prevStart = addDays(weekStart, -7).toISOString().slice(0, 10);
+  if (weekStartDate > currentWeekStart) {
+    const prevStart = addDaysToDateKey(weekStartDate, -7);
     const { data: prevPlan } = await supabase
       .from("weekly_plans")
       .select("id")
@@ -122,7 +116,7 @@ export async function POST(request: Request) {
   }
 
   const [extRes, classRes, fixedHabitRes, flexHabitRes, assignmentRes, prefRes, windowRes] = await Promise.all([
-    supabase.from("external_events").select("starts_at,ends_at").eq("user_id", user.id).gte("starts_at", weekStart.toISOString()).lt("starts_at", weekEnd.toISOString()),
+    supabase.from("external_events").select("starts_at,ends_at").eq("user_id", user.id).gte("starts_at", weekStartUtc.toISOString()).lt("starts_at", weekEndUtc.toISOString()),
     supabase.from("class_sections").select("class_meetings(day_of_week,start_time,end_time)").eq("user_id", user.id),
     supabase.from("habits").select("id,name,habit_fixed_slots(day_of_week,start_time,end_time)").eq("user_id", user.id).eq("type", "fixed").eq("active", true),
     supabase.from("habits").select("id,name,habit_flexible_rules(duration_minutes,preferred_days,times_per_week)").eq("user_id", user.id).eq("type", "flexible").eq("active", true),
@@ -149,10 +143,10 @@ export async function POST(request: Request) {
 
   pushBusyFromRecurring(
     busy,
-    weekStart,
+    weekStartDate,
     (classRes.data ?? []) as { class_meetings: { day_of_week: number; start_time: string; end_time: string }[] }[],
     (fixedHabitRes.data ?? []) as { habit_fixed_slots: { day_of_week: number; start_time: string; end_time: string }[] }[],
-    Number.isNaN(tzOffsetMinutes) ? 0 : tzOffsetMinutes
+    timeZone
   );
 
   const mergedBusy = mergeIntervals(busy);
@@ -161,16 +155,15 @@ export async function POST(request: Request) {
   const dayAssignedMinutes = new Map<string, number>();
 
   for (let i = 0; i < 7; i++) {
-    const day = addDays(weekStart, i);
-    const dateKey = dayDateKey(day);
-    const dow = day.getDay();
+    const dateKey = addDaysToDateKey(weekStartDate, i);
+    const dow = dayOfWeekFromDateKey(dateKey);
 
     let dayWindows = windows.filter((w) => w.is_override && w.day_of_week === dow);
     if (!dayWindows.length) {
       dayWindows = applyDays.has(dow) ? globalWindows : [];
     }
 
-    const allowed = dayWindows.length ? buildAllowedSlotsForDay(day, dayWindows, Number.isNaN(tzOffsetMinutes) ? 0 : tzOffsetMinutes) : [];
+    const allowed = dayWindows.length ? buildAllowedSlotsForDay(dateKey, dayWindows, timeZone) : [];
     const free = removeBusy(allowed, mergedBusy).filter((slot) => slot.end > now);
     daySlots.set(dateKey, free);
     dayUsed.set(dateKey, new Set<number>());
@@ -185,7 +178,7 @@ export async function POST(request: Request) {
     remaining_minutes: number;
   }[];
 
-  const dayOrderForward = Array.from({ length: 7 }, (_, i) => dayDateKey(addDays(weekStart, i)));
+  const dayOrderForward = Array.from({ length: 7 }, (_, i) => addDaysToDateKey(weekStartDate, i));
   const dayOrderBackward = [...dayOrderForward].reverse();
 
   for (const a of assignments) {
@@ -197,7 +190,7 @@ export async function POST(request: Request) {
 
     for (const dayKey of dayOrder) {
       if (remaining <= 0) break;
-      const dayDate = new Date(`${dayKey}T00:00:00`);
+      const dayDate = zonedDateTimeToUtc(dayKey, "00:00:00", timeZone);
       if (dayDate >= due) continue;
 
       const slots = daySlots.get(dayKey) ?? [];
@@ -263,11 +256,10 @@ export async function POST(request: Request) {
 
     let placed = 0;
     for (let i = 0; i < 7 && placed < timesPerWeek; i++) {
-      const day = addDays(weekStart, i);
-      const dayKey = dayDateKey(day);
+      const dayKey = addDaysToDateKey(weekStartDate, i);
       const slots = daySlots.get(dayKey) ?? [];
       const used = dayUsed.get(dayKey) ?? new Set<number>();
-      if (targetDays && !targetDays.has(day.getDay())) continue;
+      if (targetDays && !targetDays.has(dayOfWeekFromDateKey(dayKey))) continue;
 
       for (let idx = 0; idx < slots.length && placed < timesPerWeek; idx++) {
         if (isUsed(used, slots[idx])) continue;
@@ -320,7 +312,6 @@ export async function POST(request: Request) {
     }
   }
 
-  const weekStartDate = weekStart.toISOString().slice(0, 10);
   const { data: plan, error: planErr } = await supabase
     .from("weekly_plans")
     .upsert({ user_id: user.id, week_start_date: weekStartDate, status: "generated" }, { onConflict: "user_id,week_start_date" })
