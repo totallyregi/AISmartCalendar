@@ -41,8 +41,45 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
+
+  const { data: block, error: readErr } = await supabase
+    .from("weekly_plan_blocks")
+    .select("id,assignment_id,starts_at,ends_at")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .eq("editable", true)
+    .single();
+  if (readErr || !block) return NextResponse.json({ error: readErr?.message ?? "Block not found" }, { status: 404 });
+
   const { error } = await supabase.from("weekly_plan_blocks").delete().eq("id", id).eq("user_id", user.id).eq("editable", true);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  if (block.assignment_id) {
+    const restoredMinutes = Math.max(
+      0,
+      Math.round((new Date(String(block.ends_at)).getTime() - new Date(String(block.starts_at)).getTime()) / 60000)
+    );
+    const { data: assignment } = await supabase
+      .from("assignments")
+      .select("id,remaining_minutes,estimated_minutes")
+      .eq("id", String(block.assignment_id))
+      .eq("user_id", user.id)
+      .single();
+
+    if (assignment) {
+      const currentRemaining = Number(assignment.remaining_minutes ?? 0);
+      const estimated = Number(assignment.estimated_minutes ?? currentRemaining);
+      const nextRemaining = Math.min(estimated, currentRemaining + restoredMinutes);
+      const nextStatus = nextRemaining >= estimated ? "not_started" : nextRemaining === 0 ? "done" : "in_progress";
+
+      await supabase
+        .from("assignments")
+        .update({ remaining_minutes: nextRemaining, status: nextStatus })
+        .eq("id", String(block.assignment_id))
+        .eq("user_id", user.id);
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }
 

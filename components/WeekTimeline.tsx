@@ -21,9 +21,27 @@ const sourceCls: Record<Event["source"], string> = {
 };
 
 export function WeekTimeline({ date, events, mode, timeZone = "UTC" }: { date: string; events: Event[]; mode: "main" | "ai"; timeZone?: string }) {
+  function localMinutesOfDay(iso: string) {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+    }).formatToParts(new Date(iso));
+    const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+    const h = Number(map.hour ?? "0");
+    const m = Number(map.minute ?? "0");
+    return h * 60 + m;
+  }
+
   const sortedEvents = useMemo(
-    () => [...events].sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()),
-    [events]
+    () =>
+      [...events].sort((a, b) => {
+        const byLocalTime = localMinutesOfDay(a.starts_at) - localMinutesOfDay(b.starts_at);
+        if (byLocalTime !== 0) return byLocalTime;
+        return new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
+      }),
+    [events, timeZone]
   );
 
   async function editDraft(e: Event) {

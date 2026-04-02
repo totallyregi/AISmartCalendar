@@ -13,6 +13,8 @@ export function AssignmentList({
 }) {
   const [editing, setEditing] = useState<Assignment | null>(null);
   const [adding, setAdding] = useState(false);
+  const incomplete = assignments.filter((a) => a.status !== "done");
+  const completed = assignments.filter((a) => a.status === "done");
 
   return (
     <div className="space-y-4">
@@ -29,8 +31,11 @@ export function AssignmentList({
         />
       )}
 
-      <ul className="space-y-2">
-        {assignments.map((a) => (
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Incomplete assignments</h3>
+        {incomplete.length === 0 && <p className="text-sm text-zinc-500 dark:text-zinc-400">No incomplete assignments.</p>}
+        <ul className="space-y-2">
+          {incomplete.map((a) => (
           <li key={a.id} className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <div className="flex items-start justify-between">
               <div>
@@ -40,6 +45,22 @@ export function AssignmentList({
                 </p>
               </div>
               <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const ok = confirm("Mark this assignment as done? Future assignment events from now will be removed.");
+                    if (!ok) return;
+                    await fetch(`/api/assignments/${a.id}`, {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ status: "done" }),
+                    });
+                    window.location.reload();
+                  }}
+                  className="text-sm text-emerald-600"
+                >
+                  Mark done
+                </button>
                 <button type="button" onClick={() => { setEditing(a); setAdding(false); }} className="text-sm text-zinc-600 dark:text-zinc-400">Edit</button>
                 <button
                   type="button"
@@ -55,8 +76,42 @@ export function AssignmentList({
               </div>
             </div>
           </li>
-        ))}
-      </ul>
+          ))}
+        </ul>
+      </section>
+
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Completed assignments</h3>
+        {completed.length === 0 && <p className="text-sm text-zinc-500 dark:text-zinc-400">No completed assignments yet.</p>}
+        <ul className="space-y-2">
+          {completed.map((a) => (
+            <li key={a.id} className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="font-medium text-zinc-900 dark:text-zinc-100">{a.name}</p>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                    Due {new Date(a.due_at).toLocaleString()} · {a.estimated_minutes} min est · remaining {a.remaining_minutes} min · {a.status}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => { setEditing(a); setAdding(false); }} className="text-sm text-zinc-600 dark:text-zinc-400">Edit</button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!confirm("Delete this assignment?")) return;
+                      await fetch(`/api/assignments/${a.id}`, { method: "DELETE" });
+                      window.location.reload();
+                    }}
+                    className="text-sm text-red-600"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }

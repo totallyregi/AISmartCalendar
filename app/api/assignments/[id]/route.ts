@@ -13,6 +13,20 @@ export async function PUT(
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
+  const requestedStatus = typeof body.status === "string" ? body.status : null;
+  const markingDone = requestedStatus === "done";
+
+  let previousStatus: string | null = null;
+  if (markingDone) {
+    const { data: existing } = await supabase
+      .from("assignments")
+      .select("status")
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .single();
+    previousStatus = (existing?.status as string | undefined) ?? null;
+  }
+
   const updates: Record<string, unknown> = {};
   if (typeof body.name === "string") updates.name = body.name;
   if (typeof body.due_at === "string") updates.due_at = body.due_at;
@@ -20,6 +34,7 @@ export async function PUT(
   if (typeof body.estimated_minutes === "number") updates.estimated_minutes = body.estimated_minutes;
   if (typeof body.remaining_minutes === "number") updates.remaining_minutes = body.remaining_minutes;
   if (["not_started", "in_progress", "done"].includes(body.status)) updates.status = body.status;
+  if (markingDone) updates.remaining_minutes = 0;
 
   let { data, error } = await supabase
     .from("assignments")
@@ -43,6 +58,27 @@ export async function PUT(
   }
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  if (markingDone && previousStatus !== "done") {
+    const nowIso = new Date().toISOString();
+    await Promise.all([
+      supabase
+        .from("ai_draft_blocks")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("assignment_id", id)
+        .eq("applied", false)
+        .gte("starts_at", nowIso),
+      supabase
+        .from("weekly_plan_blocks")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("assignment_id", id)
+        .eq("origin", "applied")
+        .gte("starts_at", nowIso),
+    ]);
+  }
+
   const out = data as Record<string, unknown>;
   if (typeof out?.name !== "string" && typeof out?.title === "string") {
     return NextResponse.json({ ...out, name: out.title });

@@ -1,15 +1,50 @@
-import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import { TodoAssignmentBoard } from "@/components/TodoAssignmentBoard";
 
-export default function AssignmentsPage() {
+type AssignmentRow = {
+  id: string;
+  user_id: string;
+  class_id: string;
+  name: string;
+  due_at: string;
+  estimated_minutes: number;
+  remaining_minutes: number;
+  status: "not_started" | "in_progress" | "done";
+};
+
+type ClassRow = {
+  id: string;
+  class_code: string;
+  class_name: string;
+};
+
+export default async function AssignmentsPage() {
+  const supabase = await createClient();
+  const [{ data: assignments }, { data: classes }] = await Promise.all([
+    supabase.from("assignments").select("*").order("due_at", { ascending: true }),
+    supabase.from("class_sections").select("id,class_code,class_name"),
+  ]);
+
+  const classMap = Object.fromEntries(((classes ?? []) as ClassRow[]).map((c) => [c.id, c]));
+
+  const items = ((assignments ?? []) as AssignmentRow[]).map((a) => {
+    const cls = classMap[a.class_id];
+    return {
+      ...a,
+      class_code: cls?.class_code ?? "Class",
+      class_name: cls?.class_name ?? "Unknown",
+    };
+  });
+
   return (
-    <div className="space-y-4 animate-in">
-      <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Assignments</h1>
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        Assignments are now class-locked. Open a class tab under Classes in the sidebar and add assignments there.
-      </p>
-      <Link href="/classes" className="text-sm font-medium text-zinc-700 underline dark:text-zinc-300">
-        Go to Classes
-      </Link>
+    <div className="space-y-6 animate-in">
+      <div>
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">To-do List</h1>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          All assignments across classes. Sort and manage in one place.
+        </p>
+      </div>
+      <TodoAssignmentBoard assignments={items} />
     </div>
   );
 }
