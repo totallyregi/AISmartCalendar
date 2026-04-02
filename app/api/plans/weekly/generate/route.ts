@@ -75,6 +75,21 @@ function modeDailyTarget(mode: Mode, minMins: number, prefMins: number, maxMins:
   return prefMins;
 }
 
+function buildSequentialStatus(currentWeekStart: string, generatedWeeks: string[]) {
+  const generatedSet = new Set(generatedWeeks);
+  const contiguousGeneratedWeeks: string[] = [];
+  let cursor = currentWeekStart;
+  while (generatedSet.has(cursor)) {
+    contiguousGeneratedWeeks.push(cursor);
+    cursor = addDaysToDateKey(cursor, 7);
+  }
+  return {
+    nextWeekToGenerate: cursor,
+    contiguousGeneratedWeeks,
+    hasDraftChain: contiguousGeneratedWeeks.length > 0,
+  };
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const {
@@ -92,7 +107,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid timezone in preferences. Update Preferences first." }, { status: 400 });
   }
 
-  const weekStartDate = typeof body.weekStart === "string" ? body.weekStart : weekStartSundayDateKey(now, timeZone);
+  const requestedWeekStart = typeof body.weekStart === "string" ? body.weekStart : weekStartSundayDateKey(now, timeZone);
+  const weekStartDate = requestedWeekStart;
   const weekEndDate = addDaysToDateKey(weekStartDate, 7);
   const weekStartUtc = zonedDateTimeToUtc(weekStartDate, "00:00:00", timeZone);
   const weekEndUtc = zonedDateTimeToUtc(weekEndDate, "00:00:00", timeZone);
@@ -102,20 +118,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Cannot generate past weeks" }, { status: 400 });
   }
 
-  if (weekStartDate > currentWeekStart) {
-    const prevStart = addDaysToDateKey(weekStartDate, -7);
-    const { data: prevPlan } = await supabase
-      .from("weekly_plans")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("week_start_date", prevStart)
-      .single();
-    if (!prevPlan) {
-      return NextResponse.json({ error: `Must generate previous week first (${prevStart})` }, { status: 400 });
-    }
+  const { data: draftWeekRows } = await supabase
+    .from("ai_draft_blocks")
+    .select("week_start_date")
+    .eq("user_id", user.id)
+    .eq("applied", false)
+    .gte("week_start_date", currentWeekStart);
+
+  const generatedWeeks = Array.from(
+    new Set((draftWeekRows ?? []).map((r) => String(r.week_start_date)).filter(Boolean))
+  ).sort();
+  const status = buildSequentialStatus(currentWeekStart, generatedWeeks);
+  if (weekStartDate !== status.nextWeekToGenerate) {
+    return NextResponse.json(
+      {
+        error: status.hasDraftChain
+          ? `Generate sequentially only. Next week is ${status.nextWeekToGenerate}. Reset suggestions to regenerate earlier weeks.`
+          : `First generation must start at current week ${currentWeekStart}.`,
+      },
+      { status: 400 }
+    );
   }
 
-  const [extRes, classRes, fixedHabitRes, flexHabitRes, assignmentRes, prefRes, windowRes] = await Promise.all([
+  const [extRes, classRes, fixedHabitRes, flexHabitRes, assignmentRes, prefRes, windowRes, priorDraftRes] = await Promise.all([
     supabase.from("external_events").select("starts_at,ends_at").eq("user_id", user.id).gte("starts_at", weekStartUtc.toISOString()).lt("starts_at", weekEndUtc.toISOString()),
     supabase.from("class_sections").select("class_meetings(day_of_week,start_time,end_time)").eq("user_id", user.id),
     supabase.from("habits").select("id,name,habit_fixed_slots(day_of_week,start_time,end_time)").eq("user_id", user.id).eq("type", "fixed").eq("active", true),
@@ -123,6 +148,7 @@ export async function POST(request: Request) {
     supabase.from("assignments").select("*").eq("user_id", user.id).neq("status", "done").order("due_at", { ascending: true }),
     supabase.from("scheduler_preferences").select("*").eq("user_id", user.id).single(),
     supabase.from("scheduler_preferred_windows").select("day_of_week,start_time,end_time,is_override").eq("user_id", user.id),
+    supabase.from("ai_draft_blocks").select("assignment_id,starts_at,ends_at").eq("user_id", user.id).eq("applied", false).not("assignment_id", "is", null),
   ]);
 
   if (!prefRes.data) {
@@ -171,6 +197,14 @@ export async function POST(request: Request) {
   }
 
   const blocks: { block_type: string; title: string; starts_at: string; ends_at: string; assignment_id?: string; habit_id?: string }[] = [];
+  const priorDraftMinutesByAssignment: Record<string, number> = {};
+  (priorDraftRes.data ?? []).forEach((d) => {
+    const assignmentId = d.assignment_id as string | null;
+    if (!assignmentId) return;
+    const mins = minutesBetween(new Date(String(d.starts_at)), new Date(String(d.ends_at)));
+    priorDraftMinutesByAssignment[assignmentId] = (priorDraftMinutesByAssignment[assignmentId] ?? 0) + mins;
+  });
+
   const assignments = (assignmentRes.data ?? []) as {
     id: string;
     name: string;
@@ -182,7 +216,8 @@ export async function POST(request: Request) {
   const dayOrderBackward = [...dayOrderForward].reverse();
 
   for (const a of assignments) {
-    let remaining = Math.max(0, Number(a.remaining_minutes ?? 0));
+    const draftAllocated = priorDraftMinutesByAssignment[a.id] ?? 0;
+    let remaining = Math.max(0, Number(a.remaining_minutes ?? 0) - draftAllocated);
     if (!remaining) continue;
 
     const due = new Date(a.due_at);
