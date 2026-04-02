@@ -153,7 +153,7 @@ export async function POST(request: Request) {
     supabase.from("external_events").select("starts_at,ends_at").eq("user_id", user.id).gte("starts_at", weekStartUtc.toISOString()).lt("starts_at", weekEndUtc.toISOString()),
     supabase
       .from("weekly_plan_blocks")
-      .select("starts_at,ends_at")
+      .select("starts_at,ends_at,block_type,habit_id")
       .eq("user_id", user.id)
       .eq("origin", "applied")
       .gte("starts_at", weekStartUtc.toISOString())
@@ -337,7 +337,18 @@ export async function POST(request: Request) {
         }[];
   }[];
 
+  // If a flexible habit has already been applied for this week, don't generate it again.
+  // Otherwise each generate/apply cycle would create duplicate applied events.
+  type AppliedFlexBlock = { block_type: string | null; habit_id: string | null };
+  const flexAlreadyApplied = new Set<string>(
+    ((appliedPlanRes.data ?? []) as AppliedFlexBlock[])
+      .filter((b) => b.block_type === "habit_flexible" && b.habit_id)
+      .map((b) => String(b.habit_id))
+  );
+
   for (const h of flexHabits) {
+    if (flexAlreadyApplied.has(String(h.id))) continue;
+
     const ruleOrArr = h.habit_flexible_rules as unknown;
     const rule =
       (Array.isArray(ruleOrArr) ? ruleOrArr[0] : ruleOrArr) as
