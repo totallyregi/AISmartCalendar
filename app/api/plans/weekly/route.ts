@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { DEFAULT_USER_TIMEZONE } from "@/lib/datetimeDisplay";
 import { addDaysToDateKey, isValidTimeZone, weekStartSundayDateKey } from "@/lib/timezone";
 
 function buildSequentialStatus(currentWeekStart: string, generatedWeeks: string[]) {
@@ -24,8 +25,8 @@ export async function GET(request: Request) {
 
   const now = new Date();
   const prefRes = await supabase.from("scheduler_preferences").select("timezone").eq("user_id", user.id).single();
-  const preferredTimeZone = (prefRes.data?.timezone as string | undefined) ?? "UTC";
-  const timeZone = isValidTimeZone(preferredTimeZone) ? preferredTimeZone : "UTC";
+  const preferredTimeZone = (prefRes.data?.timezone as string | undefined) ?? DEFAULT_USER_TIMEZONE;
+  const timeZone = isValidTimeZone(preferredTimeZone) ? preferredTimeZone : DEFAULT_USER_TIMEZONE;
   const currentWeekStart = weekStartSundayDateKey(now, timeZone);
 
   const qs = new URL(request.url).searchParams;

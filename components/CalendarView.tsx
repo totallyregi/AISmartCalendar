@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-
-const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+import { WEEKDAY_FULL } from "@/lib/datetimeDisplay";
 const MONTH_NAMES = [
   "January",
   "February",
@@ -74,8 +73,13 @@ export function CalendarView({
 
       <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div className="grid grid-cols-7 border-b border-zinc-200 dark:border-zinc-800">
-          {DAY_NAMES.map((day) => (
-            <div key={day} className="border-r border-zinc-200 py-2 text-center text-xs font-medium text-zinc-500 last:border-r-0 dark:border-zinc-800 dark:text-zinc-400">{day}</div>
+          {WEEKDAY_FULL.map((day) => (
+            <div
+              key={day}
+              className="border-r border-zinc-200 px-0.5 py-2 text-center text-[10px] font-medium leading-tight text-zinc-500 last:border-r-0 sm:text-xs dark:border-zinc-800 dark:text-zinc-400"
+            >
+              {day}
+            </div>
           ))}
         </div>
 

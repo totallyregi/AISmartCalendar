@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { ClassSection } from "@/lib/types";
+import { formatClassMeetingLine } from "@/lib/datetimeDisplay";
 import { ClassForm } from "./ClassForm";
-
-const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export function ClassList({ classes }: { classes: ClassSection[] }) {
   const [editing, setEditing] = useState<ClassSection | null>(null);
@@ -45,7 +44,7 @@ export function ClassList({ classes }: { classes: ClassSection[] }) {
                 </Link>
                 <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                   {(c.class_meetings ?? [])
-                    .map((m) => `${dayNames[m.day_of_week]} ${m.start_time.slice(0, 5)}-${m.end_time.slice(0, 5)}`)
+                    .map((m) => formatClassMeetingLine(m.day_of_week, m.start_time, m.end_time))
                     .join(" · ") || "No meeting slots"}
                 </p>
               </div>

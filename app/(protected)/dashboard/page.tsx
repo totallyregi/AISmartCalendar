@@ -3,6 +3,7 @@ import { CalendarView } from "@/components/CalendarView";
 import { WeekTimeline } from "@/components/WeekTimeline";
 import { DashboardPlanner } from "@/components/DashboardPlanner";
 import { createClient } from "@/lib/supabase/server";
+import { DEFAULT_USER_TIMEZONE } from "@/lib/datetimeDisplay";
 import { isValidTimeZone, weekStartSundayDateKey, zonedDateKey, zonedDateTimeToUtc } from "@/lib/timezone";
 
 function dateOnly(value: string) {
@@ -31,8 +32,8 @@ export default async function DashboardPage({
 
   const now = new Date();
   const prefTzRes = await supabase.from("scheduler_preferences").select("timezone").eq("user_id", user?.id).single();
-  const preferredTimeZone = (prefTzRes.data?.timezone as string | undefined) ?? "UTC";
-  const timeZone = isValidTimeZone(preferredTimeZone) ? preferredTimeZone : "UTC";
+  const preferredTimeZone = (prefTzRes.data?.timezone as string | undefined) ?? DEFAULT_USER_TIMEZONE;
+  const timeZone = isValidTimeZone(preferredTimeZone) ? preferredTimeZone : DEFAULT_USER_TIMEZONE;
   const params = await searchParams;
   const year = params.year ? Number(params.year) : now.getFullYear();
   const month = params.month ? Number(params.month) : now.getMonth() + 1;

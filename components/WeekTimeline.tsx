@@ -177,9 +177,9 @@ export function WeekTimeline({ date, events, mode, timeZone = "UTC" }: { date: s
               <div className="flex items-center gap-2 text-sm">
                 <span className={`rounded px-1.5 py-0.5 text-xs capitalize ${sourceCls[e.source]}`}>{e.source.replace("_", " ")}</span>
                 <span className="text-zinc-700 dark:text-zinc-300">
-                  {new Date(e.starts_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone })}
-                  {" - "}
-                  {new Date(e.ends_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone })}
+                  {new Date(e.starts_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone })}
+                  {" – "}
+                  {new Date(e.ends_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone })}
                   {" · "}
                   {e.title}
                 </span>

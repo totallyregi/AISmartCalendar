@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Assignment } from "@/lib/types";
+import { formatDueDateTime } from "@/lib/datetimeDisplay";
 import { AssignmentForm } from "./AssignmentForm";
 
 export function AssignmentList({
@@ -41,7 +42,7 @@ export function AssignmentList({
               <div>
                 <p className="font-medium text-zinc-900 dark:text-zinc-100">{a.name}</p>
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  Due {new Date(a.due_at).toLocaleString()} · {a.estimated_minutes} min est · remaining {a.remaining_minutes} min · {a.status}
+                  Due {formatDueDateTime(a.due_at)} · Estimated Completion Time: {a.estimated_minutes}min
                 </p>
               </div>
               <div className="flex gap-2">
@@ -90,7 +91,7 @@ export function AssignmentList({
                 <div>
                   <p className="font-medium text-zinc-900 dark:text-zinc-100">{a.name}</p>
                   <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                    Due {new Date(a.due_at).toLocaleString()} · {a.estimated_minutes} min est · remaining {a.remaining_minutes} min · {a.status}
+                    Due {formatDueDateTime(a.due_at)} · Estimated Completion Time: {a.estimated_minutes}min
                   </p>
                 </div>
                 <div className="flex gap-2">

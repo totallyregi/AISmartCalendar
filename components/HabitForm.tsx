@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { WEEKDAY_FULL, formatTimeHhmmssTo12h } from "@/lib/datetimeDisplay";
 
 type HabitLike = {
   id: string;
@@ -11,7 +12,8 @@ type HabitLike = {
   habit_flexible_rules?: { duration_minutes: number; preferred_days: number[]; times_per_week: number | null }[];
 };
 
-const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+type FixedSlotRow = { day_of_week: number; start_time: string; end_time: string };
+
 const minuteOptions = [0, 15, 30, 45];
 const timeOptions = Array.from({ length: 24 * 4 }).map((_, i) => {
   const h = Math.floor(i / 4);
@@ -30,10 +32,8 @@ export function HabitForm({
 }) {
   const [name, setName] = useState(habit?.name ?? "");
   const [type, setType] = useState<"" | "fixed" | "flexible">(habit?.type ?? "");
-  const [fixedSlots, setFixedSlots] = useState(
-    habit?.habit_fixed_slots?.length
-      ? habit.habit_fixed_slots
-      : []
+  const [fixedSlots, setFixedSlots] = useState<FixedSlotRow[]>(
+    habit?.habit_fixed_slots?.length ? habit.habit_fixed_slots.map((s) => ({ ...s })) : []
   );
 
   const flex = habit?.habit_flexible_rules?.[0];
@@ -63,9 +63,27 @@ export function HabitForm({
       return;
     }
 
+    if (type === "fixed" && fixedSlots.length > 0) {
+      const incomplete = fixedSlots.some((s) => s.day_of_week < 0 || !s.start_time || !s.end_time);
+      if (incomplete) {
+        setLoading(false);
+        setError("Please select a day, start time, and end time for each fixed slot.");
+        return;
+      }
+    }
+
     const payload =
       type === "fixed"
-        ? { name, type, active: habit?.active ?? true, fixed_slots: fixedSlots }
+        ? {
+            name,
+            type,
+            active: habit?.active ?? true,
+            fixed_slots: fixedSlots.map((s) => ({
+              day_of_week: s.day_of_week,
+              start_time: s.start_time,
+              end_time: s.end_time,
+            })),
+          }
         : {
             name,
             type,
@@ -103,7 +121,9 @@ export function HabitForm({
         <div>
           <label className="block text-sm font-medium">Type</label>
           <select value={type} onChange={(e) => setType(e.target.value as "" | "fixed" | "flexible")} required className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">
-            <option value="" disabled>Select type</option>
+            <option value="" disabled>
+              Select type
+            </option>
             <option value="fixed">Fixed</option>
             <option value="flexible">Flexible</option>
           </select>
@@ -111,25 +131,88 @@ export function HabitForm({
       </div>
 
       {type === "fixed" ? (
-        <div className="mt-4 space-y-2">
+        <div className="mt-4 space-y-3">
           <p className="text-sm font-medium">Fixed schedule</p>
           {fixedSlots.map((s, i) => (
-            <div key={i} className="grid gap-2 sm:grid-cols-4">
-              <select value={s.day_of_week} onChange={(e) => setFixedSlots((prev) => prev.map((x, idx) => idx === i ? { ...x, day_of_week: Number(e.target.value) } : x))} className="rounded border border-zinc-300 px-2 py-2 dark:border-zinc-600 dark:bg-zinc-800">
-                {dayNames.map((d, idx) => (<option key={d} value={idx}>{d}</option>))}
-              </select>
-              <select value={s.start_time} onChange={(e) => setFixedSlots((prev) => prev.map((x, idx) => idx === i ? { ...x, start_time: e.target.value } : x))} className="rounded border border-zinc-300 px-2 py-2 dark:border-zinc-600 dark:bg-zinc-800">
-                <option value="" disabled>Start time</option>
-                {timeOptions.map((t) => <option key={t} value={t}>{t.slice(0,5)}</option>)}
-              </select>
-              <select value={s.end_time} onChange={(e) => setFixedSlots((prev) => prev.map((x, idx) => idx === i ? { ...x, end_time: e.target.value } : x))} className="rounded border border-zinc-300 px-2 py-2 dark:border-zinc-600 dark:bg-zinc-800">
-                <option value="" disabled>End time</option>
-                {timeOptions.map((t) => <option key={t} value={t}>{t.slice(0,5)}</option>)}
-              </select>
-              <button type="button" onClick={() => setFixedSlots((prev) => prev.filter((_, idx) => idx !== i))} className="rounded border border-zinc-300 px-3 py-2 text-sm text-red-600 dark:border-zinc-600">Remove</button>
+            <div
+              key={i}
+              className="flex flex-wrap items-end gap-2 rounded-lg border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-800/50"
+            >
+              <div className="min-w-[9.5rem] flex-1">
+                <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Day</label>
+                <select
+                  value={s.day_of_week < 0 ? "" : String(s.day_of_week)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setFixedSlots((prev) =>
+                      prev.map((x, idx) => (idx === i ? { ...x, day_of_week: v === "" ? -1 : Number(v) } : x))
+                    );
+                  }}
+                  required
+                  className="w-full rounded-md border border-zinc-300 px-2 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                >
+                  <option value="" disabled>
+                    Day
+                  </option>
+                  {WEEKDAY_FULL.map((d, idx) => (
+                    <option key={d} value={idx}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="min-w-[7.5rem] flex-1">
+                <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Start</label>
+                <select
+                  value={s.start_time}
+                  onChange={(e) => setFixedSlots((prev) => prev.map((x, idx) => (idx === i ? { ...x, start_time: e.target.value } : x)))}
+                  required
+                  className="w-full rounded-md border border-zinc-300 px-2 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                >
+                  <option value="" disabled>
+                    Start time
+                  </option>
+                  {timeOptions.map((t) => (
+                    <option key={t} value={t}>
+                      {formatTimeHhmmssTo12h(t)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="min-w-[7.5rem] flex-1">
+                <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">End</label>
+                <select
+                  value={s.end_time}
+                  onChange={(e) => setFixedSlots((prev) => prev.map((x, idx) => (idx === i ? { ...x, end_time: e.target.value } : x)))}
+                  required
+                  className="w-full rounded-md border border-zinc-300 px-2 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                >
+                  <option value="" disabled>
+                    End time
+                  </option>
+                  {timeOptions.map((t) => (
+                    <option key={`e-${t}`} value={t}>
+                      {formatTimeHhmmssTo12h(t)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFixedSlots((prev) => prev.filter((_, idx) => idx !== i))}
+                className="shrink-0 rounded-md border border-zinc-300 px-3 py-2 text-sm text-red-600 dark:border-zinc-600 dark:text-red-400"
+              >
+                Remove
+              </button>
             </div>
           ))}
-          <button type="button" onClick={() => setFixedSlots((prev) => [...prev, { day_of_week: 1, start_time: "", end_time: "" }])} className="text-sm text-zinc-600 dark:text-zinc-400">+ Add fixed slot</button>
+          <button
+            type="button"
+            onClick={() => setFixedSlots((prev) => [...prev, { day_of_week: -1, start_time: "", end_time: "" }])}
+            className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+          >
+            + Add fixed slot
+          </button>
         </div>
       ) : (
         <div className="mt-4 space-y-2">
@@ -142,15 +225,24 @@ export function HabitForm({
             <div>
               <label className="block text-sm">Duration minutes</label>
               <select value={durationM} onChange={(e) => setDurationM(Number(e.target.value))} className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">
-                {minuteOptions.map((m) => <option key={m} value={m}>{m}</option>)}
+                {minuteOptions.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
           <div>
             <label className="block text-sm">Preferred days (optional)</label>
             <div className="mt-1 flex flex-wrap gap-2">
-              {dayNames.map((d, idx) => (
-                <button type="button" key={d} onClick={() => toggleDay(idx)} className={`rounded px-2 py-1 text-xs ${preferredDays.includes(idx) ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"}`}>
+              {WEEKDAY_FULL.map((d, idx) => (
+                <button
+                  type="button"
+                  key={d}
+                  onClick={() => toggleDay(idx)}
+                  className={`rounded px-2 py-1 text-xs sm:text-sm ${preferredDays.includes(idx) ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"}`}
+                >
                   {d}
                 </button>
               ))}
@@ -164,8 +256,12 @@ export function HabitForm({
       )}
 
       <div className="mt-4 flex gap-2">
-        <button type="submit" disabled={loading} className="rounded bg-zinc-900 px-4 py-2 text-sm text-white dark:bg-zinc-100 dark:text-zinc-900">{loading ? "Saving..." : habit ? "Update" : "Add habit"}</button>
-        <button type="button" onClick={onClose} className="rounded border border-zinc-300 px-4 py-2 text-sm dark:border-zinc-600">Cancel</button>
+        <button type="submit" disabled={loading} className="rounded bg-zinc-900 px-4 py-2 text-sm text-white dark:bg-zinc-100 dark:text-zinc-900">
+          {loading ? "Saving..." : habit ? "Update" : "Add habit"}
+        </button>
+        <button type="button" onClick={onClose} className="rounded border border-zinc-300 px-4 py-2 text-sm dark:border-zinc-600">
+          Cancel
+        </button>
       </div>
     </form>
   );

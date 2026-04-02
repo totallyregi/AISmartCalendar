@@ -83,7 +83,7 @@ export async function POST(request: Request) {
       const nextRemaining = Math.max(0, Number(a.remaining_minutes ?? 0) - used);
       await supabase
         .from("assignments")
-        .update({ remaining_minutes: nextRemaining, status: nextRemaining === 0 ? "done" : "in_progress" })
+        .update({ remaining_minutes: nextRemaining })
         .eq("id", a.id as string)
         .eq("user_id", user.id);
     }

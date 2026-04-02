@@ -70,11 +70,10 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
       const currentRemaining = Number(assignment.remaining_minutes ?? 0);
       const estimated = Number(assignment.estimated_minutes ?? currentRemaining);
       const nextRemaining = Math.min(estimated, currentRemaining + restoredMinutes);
-      const nextStatus = nextRemaining >= estimated ? "not_started" : nextRemaining === 0 ? "done" : "in_progress";
 
       await supabase
         .from("assignments")
-        .update({ remaining_minutes: nextRemaining, status: nextStatus })
+        .update({ remaining_minutes: nextRemaining })
         .eq("id", String(block.assignment_id))
         .eq("user_id", user.id);
     }

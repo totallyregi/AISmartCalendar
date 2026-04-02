@@ -2,8 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { AssignmentList } from "@/components/AssignmentList";
 import type { Assignment } from "@/lib/types";
-
-const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+import { formatClassMeetingLine } from "@/lib/datetimeDisplay";
 
 export default async function ClassDetailPage({
   params,
@@ -36,7 +35,7 @@ export default async function ClassDetailPage({
         </h1>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
           {(cls.class_meetings ?? [])
-            .map((m) => `${dayNames[m.day_of_week]} ${m.start_time.slice(0, 5)}-${m.end_time.slice(0, 5)}`)
+            .map((m) => formatClassMeetingLine(m.day_of_week, m.start_time, m.end_time))
             .join(" · ") || "No recurring meetings"}
         </p>
       </div>

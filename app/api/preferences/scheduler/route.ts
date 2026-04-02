@@ -23,7 +23,7 @@ async function ensurePreference(supabase: Awaited<ReturnType<typeof createClient
       max_consecutive_minutes: 120,
       break_minutes: 30,
       default_apply_days: DEFAULT_DAYS,
-      timezone: "UTC",
+      timezone: "America/Chicago",
     })
     .select("*")
     .single();
@@ -76,7 +76,7 @@ export async function PUT(request: Request) {
   const defaultDays = Array.isArray(body.default_apply_days)
     ? (body.default_apply_days as unknown[]).map((d: unknown) => Number(d))
     : DEFAULT_DAYS;
-  const timezone = typeof body.timezone === "string" ? body.timezone : "UTC";
+  const timezone = typeof body.timezone === "string" ? body.timezone : "America/Chicago";
 
   if ([min, preferred, max, maxConsecutive, breakMinutes].some((v) => Number.isNaN(v) || v < 0 || v % 15 !== 0)) {
     return NextResponse.json({ error: "All minute values must be non-negative and in 15-minute increments" }, { status: 400 });

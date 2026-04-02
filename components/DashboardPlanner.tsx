@@ -14,7 +14,7 @@ function addDays(date: Date, days: number) {
 function formatWeekLabel(weekStart: string, weekEnd?: string) {
   const start = new Date(`${weekStart}T00:00:00`);
   const end = weekEnd ? new Date(`${weekEnd}T00:00:00`) : addDays(start, 6);
-  const fmt = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  const fmt = new Intl.DateTimeFormat("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   return `${fmt.format(start)} to ${fmt.format(end)}`;
 }
 

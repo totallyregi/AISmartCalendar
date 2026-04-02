@@ -2,8 +2,10 @@
 
 import { useMemo, useState } from "react";
 import type { ClassMeeting, ClassSection } from "@/lib/types";
+import { WEEKDAY_FULL, formatTimeHhmmssTo12h } from "@/lib/datetimeDisplay";
 
-const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+/** `-1` means day not chosen yet (placeholder). */
+type MeetingFormRow = Omit<ClassMeeting, "day_of_week"> & { day_of_week: number };
 
 function buildTimeOptions() {
   const out: string[] = [];
@@ -26,10 +28,8 @@ export function ClassForm({
 }) {
   const [classCode, setClassCode] = useState(item?.class_code ?? "");
   const [className, setClassName] = useState(item?.class_name ?? "");
-  const [meetings, setMeetings] = useState<ClassMeeting[]>(
-    item?.class_meetings?.length
-      ? item.class_meetings
-      : []
+  const [meetings, setMeetings] = useState<MeetingFormRow[]>(() =>
+    item?.class_meetings?.length ? (item.class_meetings as MeetingFormRow[]) : []
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,8 +41,25 @@ export function ClassForm({
     setLoading(true);
     setError(null);
 
+    if (meetings.length > 0) {
+      const incomplete = meetings.some(
+        (m) => m.day_of_week < 0 || !m.start_time || !m.end_time
+      );
+      if (incomplete) {
+        setError("Please select a day, start time, and end time for each meeting slot.");
+        setLoading(false);
+        return;
+      }
+    }
+
     const url = item ? `/api/classes/${item.id}` : "/api/classes";
     const method = item ? "PUT" : "POST";
+
+    const meetingsPayload: ClassMeeting[] = meetings.map((m) => ({
+      day_of_week: m.day_of_week,
+      start_time: m.start_time,
+      end_time: m.end_time,
+    }));
 
     const res = await fetch(url, {
       method,
@@ -50,7 +67,7 @@ export function ClassForm({
       body: JSON.stringify({
         class_code: classCode,
         class_name: className,
-        meetings,
+        meetings: meetingsPayload,
       }),
     });
 
@@ -63,12 +80,12 @@ export function ClassForm({
     onSaved();
   }
 
-  function updateMeeting(i: number, patch: Partial<ClassMeeting>) {
+  function updateMeeting(i: number, patch: Partial<MeetingFormRow>) {
     setMeetings((prev) => prev.map((m, idx) => (idx === i ? { ...m, ...patch } : m)));
   }
 
   function addMeeting() {
-    setMeetings((prev) => [...prev, { day_of_week: 1, start_time: "", end_time: "" }]);
+    setMeetings((prev) => [...prev, { day_of_week: -1, start_time: "", end_time: "" }]);
   }
 
   function removeMeeting(i: number) {
@@ -106,47 +123,84 @@ export function ClassForm({
         </div>
       </div>
 
-      <div className="mt-4 space-y-2">
+      <div className="mt-4 space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Meeting slots (15-min intervals)</p>
-          <button type="button" onClick={addMeeting} className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400">
+          <button
+            type="button"
+            onClick={addMeeting}
+            className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+          >
             + Add slot
           </button>
         </div>
 
         {meetings.map((m, i) => (
-          <div key={i} className="grid gap-2 sm:grid-cols-4">
-            <select
-              value={m.day_of_week}
-              onChange={(e) => updateMeeting(i, { day_of_week: Number(e.target.value) })}
-              className="rounded border border-zinc-300 px-2 py-2 dark:border-zinc-600 dark:bg-zinc-800"
-            >
-              {dayNames.map((d, idx) => (
-                <option key={d} value={idx}>{d}</option>
-              ))}
-            </select>
-            <select
-              value={m.start_time}
-              onChange={(e) => updateMeeting(i, { start_time: e.target.value })}
-              required
-              className="rounded border border-zinc-300 px-2 py-2 dark:border-zinc-600 dark:bg-zinc-800"
-            >
-              <option value="" disabled>Start time</option>
-              {timeOptions.map((t) => (<option key={t} value={t}>{t.slice(0,5)}</option>))}
-            </select>
-            <select
-              value={m.end_time}
-              onChange={(e) => updateMeeting(i, { end_time: e.target.value })}
-              required
-              className="rounded border border-zinc-300 px-2 py-2 dark:border-zinc-600 dark:bg-zinc-800"
-            >
-              <option value="" disabled>End time</option>
-              {timeOptions.map((t) => (<option key={t} value={t}>{t.slice(0,5)}</option>))}
-            </select>
+          <div
+            key={i}
+            className="flex flex-wrap items-end gap-2 rounded-lg border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-800/50"
+          >
+            <div className="min-w-[9.5rem] flex-1">
+              <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Day</label>
+              <select
+                value={m.day_of_week < 0 ? "" : String(m.day_of_week)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  updateMeeting(i, { day_of_week: v === "" ? -1 : Number(v) });
+                }}
+                required
+                className="w-full rounded-md border border-zinc-300 px-2 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+              >
+                <option value="" disabled>
+                  Day
+                </option>
+                {WEEKDAY_FULL.map((d, idx) => (
+                  <option key={d} value={idx}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="min-w-[7.5rem] flex-1">
+              <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Start</label>
+              <select
+                value={m.start_time}
+                onChange={(e) => updateMeeting(i, { start_time: e.target.value })}
+                required
+                className="w-full rounded-md border border-zinc-300 px-2 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+              >
+                <option value="" disabled>
+                  Start time
+                </option>
+                {timeOptions.map((t) => (
+                  <option key={t} value={t}>
+                    {formatTimeHhmmssTo12h(t)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="min-w-[7.5rem] flex-1">
+              <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">End</label>
+              <select
+                value={m.end_time}
+                onChange={(e) => updateMeeting(i, { end_time: e.target.value })}
+                required
+                className="w-full rounded-md border border-zinc-300 px-2 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+              >
+                <option value="" disabled>
+                  End time
+                </option>
+                {timeOptions.map((t) => (
+                  <option key={`e-${t}`} value={t}>
+                    {formatTimeHhmmssTo12h(t)}
+                  </option>
+                ))}
+              </select>
+            </div>
             <button
               type="button"
               onClick={() => removeMeeting(i)}
-              className="rounded border border-zinc-300 px-3 py-2 text-sm text-red-600 dark:border-zinc-600"
+              className="shrink-0 rounded-md border border-zinc-300 px-3 py-2 text-sm text-red-600 dark:border-zinc-600 dark:text-red-400"
             >
               Remove
             </button>

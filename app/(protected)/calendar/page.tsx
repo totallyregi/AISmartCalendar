@@ -4,6 +4,7 @@ import { CalendarView } from "@/components/CalendarView";
 import { WeekTimeline } from "@/components/WeekTimeline";
 import { PersonalEventForm } from "@/components/PersonalEventForm";
 import { CalendarConnectionCard } from "@/components/CalendarConnectionCard";
+import { DEFAULT_USER_TIMEZONE } from "@/lib/datetimeDisplay";
 import { isValidTimeZone, zonedDateKey, zonedDateTimeToUtc } from "@/lib/timezone";
 
 type DayMeta = { external: number; classes: number; fixedHabits: number; generated: number; personal: number };
@@ -34,8 +35,8 @@ export default async function CalendarPage({
   const params = await searchParams;
   const now = new Date();
   const prefTzRes = await supabase.from("scheduler_preferences").select("timezone").eq("user_id", user?.id).single();
-  const preferredTimeZone = (prefTzRes.data?.timezone as string | undefined) ?? "UTC";
-  const timeZone = isValidTimeZone(preferredTimeZone) ? preferredTimeZone : "UTC";
+  const preferredTimeZone = (prefTzRes.data?.timezone as string | undefined) ?? DEFAULT_USER_TIMEZONE;
+  const timeZone = isValidTimeZone(preferredTimeZone) ? preferredTimeZone : DEFAULT_USER_TIMEZONE;
   const year = params.year ? Number(params.year) : now.getFullYear();
   const month = params.month ? Number(params.month) : now.getMonth() + 1;
   const selectedDate = params.date ?? zonedDateKey(now, timeZone);

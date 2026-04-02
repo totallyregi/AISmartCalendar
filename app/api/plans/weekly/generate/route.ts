@@ -6,6 +6,7 @@ import {
   type Interval,
 } from "@/lib/scheduler/weekly";
 import { NextResponse } from "next/server";
+import { DEFAULT_USER_TIMEZONE } from "@/lib/datetimeDisplay";
 import { addDaysToDateKey, dayOfWeekFromDateKey, isValidTimeZone, weekStartSundayDateKey, zonedDateTimeToUtc } from "@/lib/timezone";
 
 type Mode = "intense" | "relaxed" | "lazy";
@@ -102,7 +103,7 @@ export async function POST(request: Request) {
   const now = new Date();
 
   const prefQuick = await supabase.from("scheduler_preferences").select("timezone").eq("user_id", user.id).single();
-  const timeZone = (prefQuick.data?.timezone as string | undefined) ?? "UTC";
+  const timeZone = (prefQuick.data?.timezone as string | undefined) ?? DEFAULT_USER_TIMEZONE;
   if (!isValidTimeZone(timeZone)) {
     return NextResponse.json({ error: "Invalid timezone in preferences. Update Preferences first." }, { status: 400 });
   }

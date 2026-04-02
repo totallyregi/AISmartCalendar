@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { WEEKDAY_FULL, formatClassMeetingLine } from "@/lib/datetimeDisplay";
 import { HabitForm } from "./HabitForm";
 
 type HabitRow = {
@@ -11,8 +12,6 @@ type HabitRow = {
   habit_fixed_slots?: { day_of_week: number; start_time: string; end_time: string }[];
   habit_flexible_rules?: { duration_minutes: number; preferred_days: number[]; times_per_week: number | null }[];
 };
-
-const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export function HabitList({ habits }: { habits: HabitRow[] }) {
   const [editing, setEditing] = useState<HabitRow | null>(null);
@@ -38,10 +37,10 @@ export function HabitList({ habits }: { habits: HabitRow[] }) {
                   <p className="font-medium text-zinc-900 dark:text-zinc-100">{h.name}</p>
                   <p className="text-sm text-zinc-500 dark:text-zinc-400">
                     {h.type === "fixed"
-                      ? (h.habit_fixed_slots ?? []).map((s) => `${dayNames[s.day_of_week]} ${s.start_time.slice(0,5)}-${s.end_time.slice(0,5)}`).join(" · ") || "No fixed slots"
+                      ? (h.habit_fixed_slots ?? []).map((s) => formatClassMeetingLine(s.day_of_week, s.start_time, s.end_time)).join(" · ") || "No fixed slots"
                       : `${flex?.duration_minutes ?? 0} min` +
                         `${flex?.times_per_week ? ` · ${flex.times_per_week}x/week` : ""}` +
-                        `${flex?.preferred_days?.length ? ` · days: ${flex.preferred_days.map((d) => dayNames[d]).join(", ")}` : ""}`}
+                        `${flex?.preferred_days?.length ? ` · days: ${flex.preferred_days.map((d) => WEEKDAY_FULL[d]).join(", ")}` : ""}`}
                   </p>
                 </div>
                 <div className="flex gap-2">

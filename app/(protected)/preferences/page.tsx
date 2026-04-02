@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { DEFAULT_USER_TIMEZONE, WEEKDAY_FULL, formatTimeHhmmssTo12h } from "@/lib/datetimeDisplay";
 
 type Preference = {
   min_daily_minutes: number;
@@ -20,12 +21,11 @@ type WindowRow = {
   is_override: boolean;
 };
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const TIMEZONES = [
   { value: "UTC", label: "UTC+00:00 (UTC, London winter)" },
   { value: "America/Los_Angeles", label: "UTC-08:00 (Los Angeles, Vancouver)" },
   { value: "America/Denver", label: "UTC-07:00 (Denver, Phoenix*)" },
-  { value: "America/Chicago", label: "UTC-06:00 (Chicago, New Orleans)" },
+  { value: "America/Chicago", label: "US Central — New Orleans, Chicago (DST-aware)" },
   { value: "America/New_York", label: "UTC-05:00 (New York, Toronto)" },
   { value: "America/Toronto", label: "UTC-05:00 (Toronto)" },
   { value: "Europe/London", label: "UTC+00:00 (London)" },
@@ -48,7 +48,7 @@ const defaultPref: Preference = {
   max_consecutive_minutes: 120,
   break_minutes: 30,
   default_apply_days: [1, 2, 3, 4, 5],
-  timezone: "UTC",
+  timezone: DEFAULT_USER_TIMEZONE,
 };
 
 export default function PreferencesPage() {
@@ -186,7 +186,7 @@ export default function PreferencesPage() {
               </select>
               <button
                 type="button"
-                onClick={() => setPref((p) => ({ ...p, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC" }))}
+                onClick={() => setPref((p) => ({ ...p, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || DEFAULT_USER_TIMEZONE }))}
                 className="rounded border border-zinc-300 px-3 py-2 text-xs dark:border-zinc-600"
               >
                 Detect
@@ -198,7 +198,7 @@ export default function PreferencesPage() {
         <div className="mt-4">
           <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Preferred work days</p>
           <div className="mt-2 flex flex-wrap gap-2">
-            {DAYS.map((d, idx) => {
+            {WEEKDAY_FULL.map((d, idx) => {
               const selected = pref.default_apply_days.includes(idx);
               return (
                 <button
@@ -208,7 +208,7 @@ export default function PreferencesPage() {
                     ...p,
                     default_apply_days: selected ? p.default_apply_days.filter((x) => x !== idx) : [...p.default_apply_days, idx].sort((a, b) => a - b),
                   }))}
-                  className={`rounded px-3 py-1 text-sm ${selected ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : "border border-zinc-300 text-zinc-700 dark:border-zinc-600 dark:text-zinc-300"}`}
+                  className={`rounded px-2.5 py-1 text-xs sm:text-sm ${selected ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : "border border-zinc-300 text-zinc-700 dark:border-zinc-600 dark:text-zinc-300"}`}
                 >
                   {d}
                 </button>
@@ -230,7 +230,11 @@ export default function PreferencesPage() {
 
         <div className="mt-3 grid gap-2 sm:grid-cols-5">
           <select value={newDay} onChange={(e) => setNewDay(Number(e.target.value))} className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">
-            {DAYS.map((d, idx) => <option key={d} value={idx}>{d}</option>)}
+            {WEEKDAY_FULL.map((d, idx) => (
+              <option key={d} value={idx}>
+                {d}
+              </option>
+            ))}
           </select>
           <input type="time" step={900} value={newStart.slice(0, 5)} onChange={(e) => setNewStart(`${e.target.value}:00`)} className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800" />
           <input type="time" step={900} value={newEnd.slice(0, 5)} onChange={(e) => setNewEnd(`${e.target.value}:00`)} className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800" />
@@ -244,7 +248,7 @@ export default function PreferencesPage() {
         </div>
 
         <div className="mt-4 space-y-3">
-          {DAYS.map((d, idx) => {
+          {WEEKDAY_FULL.map((d, idx) => {
             const rows = grouped[idx] ?? [];
             return (
               <div key={d} className="rounded border border-zinc-200 p-2 dark:border-zinc-700">
@@ -256,7 +260,8 @@ export default function PreferencesPage() {
                     {rows.map((r) => (
                       <li key={r.id} className="flex items-center justify-between text-xs text-zinc-600 dark:text-zinc-300">
                         <span>
-                          {r.start_time.slice(0, 5)} - {r.end_time.slice(0, 5)} {r.is_override ? "(override)" : ""}
+                          {formatTimeHhmmssTo12h(r.start_time)} – {formatTimeHhmmssTo12h(r.end_time)}{" "}
+                          {r.is_override ? "(override)" : ""}
                         </span>
                         <button type="button" onClick={() => removeWindow(r.id)} className="text-red-600 dark:text-red-400">Delete</button>
                       </li>
