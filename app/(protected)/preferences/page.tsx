@@ -21,6 +21,25 @@ type WindowRow = {
 };
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const TIMEZONES = [
+  "UTC",
+  "Asia/Singapore",
+  "Asia/Kuala_Lumpur",
+  "Asia/Tokyo",
+  "Asia/Seoul",
+  "Asia/Shanghai",
+  "Asia/Bangkok",
+  "Asia/Kolkata",
+  "Australia/Sydney",
+  "Europe/London",
+  "Europe/Paris",
+  "Europe/Berlin",
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "America/Toronto",
+];
 
 const defaultPref: Preference = {
   min_daily_minutes: 120,
@@ -154,12 +173,17 @@ export default function PreferencesPage() {
           </label>
           <label className="text-sm text-zinc-700 dark:text-zinc-300">Timezone
             <div className="mt-1 flex gap-2">
-              <input
+              <select
                 value={pref.timezone}
                 onChange={(e) => setPref((p) => ({ ...p, timezone: e.target.value }))}
-                placeholder="e.g. Asia/Singapore"
                 className="w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800"
-              />
+              >
+                {TIMEZONES.map((tz) => (
+                  <option key={tz} value={tz}>
+                    {tz}
+                  </option>
+                ))}
+              </select>
               <button
                 type="button"
                 onClick={() => setPref((p) => ({ ...p, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC" }))}
