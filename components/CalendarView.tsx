@@ -111,7 +111,7 @@ export function CalendarView({
                   {meta.fixedHabits > 0 && <span className="h-2 w-2 rounded-full bg-green-600 ring-1 ring-green-400/40 dark:ring-green-400/25" />}
                   {meta.flexibleHabits > 0 && <span className="h-2 w-2 rounded-full bg-fuchsia-500 ring-1 ring-fuchsia-400/40 dark:ring-fuchsia-400/25" />}
                   {meta.assignments > 0 && <span className="h-2 w-2 rounded-full bg-orange-500 ring-1 ring-orange-400/40 dark:ring-orange-400/25" />}
-                  {showGeneratedDots && meta.generated > 0 && <span className="h-2 w-2 rounded-full bg-amber-500 ring-1 ring-amber-400/40 dark:ring-amber-400/25" />}
+                  {showGeneratedDots && meta.generated > 0 && <span className="h-2 w-2 rounded-full bg-cyan-400 ring-1 ring-cyan-300/50 dark:ring-cyan-300/35" />}
                   {meta.personal > 0 && <span className="h-2 w-2 rounded-full bg-rose-500 ring-1 ring-rose-400/40 dark:ring-rose-400/25" />}
                 </div>
               </Link>

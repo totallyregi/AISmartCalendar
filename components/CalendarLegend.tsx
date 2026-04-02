@@ -10,7 +10,7 @@ export function CalendarLegend({ variant = "main" }: { variant?: "main" | "ai" }
 
   const aiItems = [
     ...mainItems,
-    { label: "Generated (draft)", color: "bg-amber-500" },
+    { label: "Generated (draft)", color: "bg-cyan-400" },
   ];
 
   const items = variant === "ai" ? aiItems : mainItems;

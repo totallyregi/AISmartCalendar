@@ -27,7 +27,7 @@ const sourceCls: Record<Event["source"], string> = {
   fixed_habit: "bg-green-100 text-green-800 dark:bg-green-900/35 dark:text-green-300",
   flexible_habit: "bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-900/35 dark:text-fuchsia-300",
   assignment: "bg-orange-100 text-orange-800 dark:bg-orange-900/35 dark:text-orange-300",
-  generated: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+  generated: "bg-cyan-100 text-cyan-900 dark:bg-cyan-900/35 dark:text-cyan-300",
   personal: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
 };
 
