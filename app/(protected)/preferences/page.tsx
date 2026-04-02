@@ -21,6 +21,12 @@ type WindowRow = {
   is_override: boolean;
 };
 
+const timeOptions = Array.from({ length: 24 * 4 }).map((_, i) => {
+  const h = Math.floor(i / 4);
+  const m = (i % 4) * 15;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`;
+});
+
 const TIMEZONES = [
   { value: "UTC", label: "UTC+00:00 (UTC, London winter)" },
   { value: "America/Los_Angeles", label: "UTC-08:00 (Los Angeles, Vancouver)" },
@@ -58,10 +64,9 @@ export default function PreferencesPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [newDay, setNewDay] = useState(1);
-  const [newStart, setNewStart] = useState("12:00:00");
-  const [newEnd, setNewEnd] = useState("20:00:00");
-  const [newOverride, setNewOverride] = useState(false);
+  const [newDay, setNewDay] = useState<number | "">("");
+  const [newStart, setNewStart] = useState("");
+  const [newEnd, setNewEnd] = useState("");
 
   async function loadData() {
     const res = await fetch("/api/preferences/scheduler");
@@ -116,7 +121,7 @@ export default function PreferencesPage() {
     const res = await fetch("/api/preferences/scheduler/windows", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ day_of_week: newDay, start_time: newStart, end_time: newEnd, is_override: newOverride }),
+      body: JSON.stringify({ day_of_week: newDay, start_time: newStart, end_time: newEnd }),
     });
     const data = await res.json().catch(() => ({}));
     setLoading(false);
@@ -228,22 +233,39 @@ export default function PreferencesPage() {
 
       <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Preferred work windows</h2>
-        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Add reusable work windows. Set override for day-specific custom windows.</p>
+        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Add your available work windows for each day.</p>
 
-        <div className="mt-3 grid gap-2 sm:grid-cols-5">
-          <select value={newDay} onChange={(e) => setNewDay(Number(e.target.value))} className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">
+        <div className="mt-3 grid gap-2 sm:grid-cols-4">
+          <select value={newDay === "" ? "" : String(newDay)} onChange={(e) => setNewDay(e.target.value === "" ? "" : Number(e.target.value))} className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">
+            <option value="" disabled>
+              Day
+            </option>
             {WEEKDAY_FULL.map((d, idx) => (
               <option key={d} value={idx}>
                 {d}
               </option>
             ))}
           </select>
-          <input type="time" step={900} value={newStart.slice(0, 5)} onChange={(e) => setNewStart(`${e.target.value}:00`)} className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800" />
-          <input type="time" step={900} value={newEnd.slice(0, 5)} onChange={(e) => setNewEnd(`${e.target.value}:00`)} className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800" />
-          <label className="flex items-center gap-2 rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600">
-            <input type="checkbox" checked={newOverride} onChange={(e) => setNewOverride(e.target.checked)} />
-            Day override
-          </label>
+          <select value={newStart} onChange={(e) => setNewStart(e.target.value)} className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">
+            <option value="" disabled>
+              Start Time
+            </option>
+            {timeOptions.map((t) => (
+              <option key={t} value={t}>
+                {formatTimeHhmmssTo12h(t)}
+              </option>
+            ))}
+          </select>
+          <select value={newEnd} onChange={(e) => setNewEnd(e.target.value)} className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">
+            <option value="" disabled>
+              End Time
+            </option>
+            {timeOptions.map((t) => (
+              <option key={`end-${t}`} value={t}>
+                {formatTimeHhmmssTo12h(t)}
+              </option>
+            ))}
+          </select>
           <button type="button" onClick={addWindow} disabled={loading} className="rounded bg-zinc-900 px-3 py-2 text-sm text-white disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900">
             Add window
           </button>
@@ -262,8 +284,7 @@ export default function PreferencesPage() {
                     {rows.map((r) => (
                       <li key={r.id} className="flex items-center justify-between text-xs text-zinc-600 dark:text-zinc-300">
                         <span>
-                          {formatTimeHhmmssTo12h(r.start_time)} – {formatTimeHhmmssTo12h(r.end_time)}{" "}
-                          {r.is_override ? "(override)" : ""}
+                          {formatTimeHhmmssTo12h(r.start_time)} – {formatTimeHhmmssTo12h(r.end_time)}
                         </span>
                         <button type="button" onClick={() => removeWindow(r.id)} className="text-red-600 dark:text-red-400">Delete</button>
                       </li>

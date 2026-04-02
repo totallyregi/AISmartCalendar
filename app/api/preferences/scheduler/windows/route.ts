@@ -24,7 +24,6 @@ export async function POST(request: Request) {
   const day = Number(body.day_of_week);
   const start = String(body.start_time ?? "");
   const end = String(body.end_time ?? "");
-  const isOverride = Boolean(body.is_override);
 
   if (!Number.isInteger(day) || day < 0 || day > 6 || !start || !end) {
     return NextResponse.json({ error: "day_of_week, start_time, end_time required" }, { status: 400 });
@@ -38,7 +37,7 @@ export async function POST(request: Request) {
       day_of_week: day,
       start_time: start,
       end_time: end,
-      is_override: isOverride,
+      is_override: false,
     })
     .select("id,day_of_week,start_time,end_time,is_override")
     .single();

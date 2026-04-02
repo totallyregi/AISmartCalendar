@@ -184,9 +184,7 @@ export async function POST(request: Request) {
 
   const prefs = prefRes.data;
 
-  const applyDays = new Set<number>((prefs.default_apply_days ?? [1, 2, 3, 4, 5]).map((d: number) => Number(d)));
   const windows = (windowRes.data ?? []) as { day_of_week: number; start_time: string; end_time: string; is_override: boolean }[];
-  const globalWindows = windows.filter((w) => !w.is_override);
 
   const busy: Interval[] = [];
   (extRes.data ?? []).forEach((e) => busy.push({ start: new Date(e.starts_at as string), end: new Date(e.ends_at as string) }));
@@ -211,10 +209,7 @@ export async function POST(request: Request) {
     const dateKey = addDaysToDateKey(weekStartDate, i);
     const dow = dayOfWeekFromDateKey(dateKey);
 
-    let dayWindows = windows.filter((w) => w.is_override && w.day_of_week === dow);
-    if (!dayWindows.length) {
-      dayWindows = applyDays.has(dow) ? globalWindows : [];
-    }
+    const dayWindows = windows.filter((w) => w.day_of_week === dow);
 
     const allowed = dayWindows.length ? buildAllowedSlotsForDay(dateKey, dayWindows, timeZone) : [];
     const free = removeBusy(allowed, mergedBusy).filter((slot) => slot.end > now);
