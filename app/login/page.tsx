@@ -38,8 +38,9 @@ function LoginForm() {
     setResetMessage(null);
 
     const supabase = createClient();
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
     const { error: resetErr } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/login`,
+      redirectTo: `${siteUrl}/login`,
     });
 
     setResetLoading(false);
