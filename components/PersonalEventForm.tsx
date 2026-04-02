@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 
-export function PersonalEventForm({ defaultDate }: { defaultDate: string }) {
+export function PersonalEventForm({ defaultDate: _defaultDate }: { defaultDate: string }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
-  const [start, setStart] = useState(`${defaultDate}T18:00`);
-  const [end, setEnd] = useState(`${defaultDate}T19:00`);
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function submit(e: React.FormEvent) {

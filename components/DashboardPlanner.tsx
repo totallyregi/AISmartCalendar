@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { SchedulerMode } from "@/lib/types";
+import Link from "next/link";
 
 function sundayStart(date: Date) {
   const d = new Date(date);
@@ -29,6 +30,7 @@ export function DashboardPlanner({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [draftBlocks, setDraftBlocks] = useState<Block[]>([]);
+  const [preferencesConfigured, setPreferencesConfigured] = useState(false);
 
   const weekOptions = useMemo(() => {
     const out: string[] = [];
@@ -47,8 +49,15 @@ export function DashboardPlanner({
     setDraftBlocks(Array.isArray(data.draftBlocks) ? data.draftBlocks : []);
   }
 
+  async function loadPreferenceState() {
+    const res = await fetch("/api/preferences/scheduler");
+    const data = await res.json().catch(() => ({}));
+    setPreferencesConfigured(!!data.configured);
+  }
+
   useEffect(() => {
     loadDraft();
+    loadPreferenceState();
   }, [weekStart]);
 
   async function generateWeek() {
@@ -115,11 +124,16 @@ export function DashboardPlanner({
             </select>
           </div>
           <div className="flex items-end">
-            <button type="button" onClick={generateWeek} disabled={loading} className="w-full rounded bg-emerald-600 px-3 py-2 text-sm text-white disabled:opacity-50 hover:bg-emerald-700">
+            <button type="button" onClick={generateWeek} disabled={loading || !preferencesConfigured} className="w-full rounded bg-emerald-600 px-3 py-2 text-sm text-white disabled:opacity-50 hover:bg-emerald-700">
               Generate suggested schedule
             </button>
           </div>
         </div>
+        {!preferencesConfigured && (
+          <p className="text-xs text-amber-600 dark:text-amber-400">
+            Configure <Link href="/preferences" className="underline">Preferences</Link> (including at least one work window) before generating.
+          </p>
+        )}
       </section>
 
       <section className="space-y-2 rounded-lg border border-zinc-200/80 p-3 dark:border-zinc-700/80">

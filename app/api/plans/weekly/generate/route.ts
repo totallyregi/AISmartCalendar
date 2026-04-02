@@ -123,14 +123,14 @@ export async function POST(request: Request) {
     supabase.from("scheduler_preferred_windows").select("day_of_week,start_time,end_time,is_override").eq("user_id", user.id),
   ]);
 
-  const prefs = prefRes.data ?? {
-    min_daily_minutes: 120,
-    preferred_daily_minutes: 180,
-    max_daily_minutes: 300,
-    max_consecutive_minutes: 120,
-    break_minutes: 30,
-    default_apply_days: [1, 2, 3, 4, 5],
-  };
+  if (!prefRes.data) {
+    return NextResponse.json({ error: "Please save Preferences before generating a schedule." }, { status: 400 });
+  }
+  if (!(windowRes.data ?? []).length) {
+    return NextResponse.json({ error: "Please add at least one preferred work window in Preferences before generating." }, { status: 400 });
+  }
+
+  const prefs = prefRes.data;
 
   const applyDays = new Set<number>((prefs.default_apply_days ?? [1, 2, 3, 4, 5]).map((d: number) => Number(d)));
   const windows = (windowRes.data ?? []) as { day_of_week: number; start_time: string; end_time: string; is_override: boolean }[];
@@ -158,9 +158,7 @@ export async function POST(request: Request) {
 
     let dayWindows = windows.filter((w) => w.is_override && w.day_of_week === dow);
     if (!dayWindows.length) {
-      dayWindows = applyDays.has(dow)
-        ? (globalWindows.length ? globalWindows : [{ day_of_week: dow, start_time: "12:00:00", end_time: "20:00:00", is_override: false }])
-        : [];
+      dayWindows = applyDays.has(dow) ? globalWindows : [];
     }
 
     const allowed = dayWindows.length ? buildAllowedSlotsForDay(day, dayWindows) : [];

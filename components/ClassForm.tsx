@@ -29,7 +29,7 @@ export function ClassForm({
   const [meetings, setMeetings] = useState<ClassMeeting[]>(
     item?.class_meetings?.length
       ? item.class_meetings
-      : [{ day_of_week: 1, start_time: "09:00:00", end_time: "10:00:00" }]
+      : []
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +68,7 @@ export function ClassForm({
   }
 
   function addMeeting() {
-    setMeetings((prev) => [...prev, { day_of_week: 1, start_time: "09:00:00", end_time: "10:00:00" }]);
+    setMeetings((prev) => [...prev, { day_of_week: 1, start_time: "", end_time: "" }]);
   }
 
   function removeMeeting(i: number) {
@@ -128,15 +128,19 @@ export function ClassForm({
             <select
               value={m.start_time}
               onChange={(e) => updateMeeting(i, { start_time: e.target.value })}
+              required
               className="rounded border border-zinc-300 px-2 py-2 dark:border-zinc-600 dark:bg-zinc-800"
             >
+              <option value="" disabled>Start time</option>
               {timeOptions.map((t) => (<option key={t} value={t}>{t.slice(0,5)}</option>))}
             </select>
             <select
               value={m.end_time}
               onChange={(e) => updateMeeting(i, { end_time: e.target.value })}
+              required
               className="rounded border border-zinc-300 px-2 py-2 dark:border-zinc-600 dark:bg-zinc-800"
             >
+              <option value="" disabled>End time</option>
               {timeOptions.map((t) => (<option key={t} value={t}>{t.slice(0,5)}</option>))}
             </select>
             <button

@@ -22,8 +22,8 @@ export function AssignmentForm({
 }) {
   const [name, setName] = useState(assignment?.name ?? "");
   const [dueAt, setDueAt] = useState(assignment?.due_at?.slice(0, 16) ?? "");
-  const [estHours, setEstHours] = useState(Math.floor((assignment?.estimated_minutes ?? 60) / 60));
-  const [estMins, setEstMins] = useState((assignment?.estimated_minutes ?? 60) % 60);
+  const [estHours, setEstHours] = useState(Math.floor((assignment?.estimated_minutes ?? 0) / 60));
+  const [estMins, setEstMins] = useState((assignment?.estimated_minutes ?? 0) % 60);
   const [status, setStatus] = useState(assignment?.status ?? "not_started");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,7 +73,7 @@ export function AssignmentForm({
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Assignment name</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} required className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800" />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Midterm revision" required className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800" />
         </div>
 
         <div>
@@ -81,12 +81,14 @@ export function AssignmentForm({
           <input type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} required className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800" />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Status</label>
-          <select value={status} onChange={(e) => setStatus(e.target.value as Assignment["status"])} className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">
-            {statuses.map((s) => (<option key={s} value={s}>{s}</option>))}
-          </select>
-        </div>
+        {assignment && (
+          <div>
+            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Status</label>
+            <select value={status} onChange={(e) => setStatus(e.target.value as Assignment["status"])} className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">
+              {statuses.map((s) => (<option key={s} value={s}>{s}</option>))}
+            </select>
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Estimated hours</label>

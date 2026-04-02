@@ -51,6 +51,7 @@ export async function GET() {
     return NextResponse.json({
       preference,
       windows: windows ?? [],
+      configured: (windows ?? []).length > 0,
     });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Failed to load preferences" }, { status: 500 });

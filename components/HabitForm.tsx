@@ -29,16 +29,16 @@ export function HabitForm({
   onSaved: () => void;
 }) {
   const [name, setName] = useState(habit?.name ?? "");
-  const [type, setType] = useState<"fixed" | "flexible">(habit?.type ?? "fixed");
+  const [type, setType] = useState<"" | "fixed" | "flexible">(habit?.type ?? "");
   const [fixedSlots, setFixedSlots] = useState(
     habit?.habit_fixed_slots?.length
       ? habit.habit_fixed_slots
-      : [{ day_of_week: 1, start_time: "20:00:00", end_time: "21:00:00" }]
+      : []
   );
 
   const flex = habit?.habit_flexible_rules?.[0];
-  const [durationH, setDurationH] = useState(Math.floor((flex?.duration_minutes ?? 60) / 60));
-  const [durationM, setDurationM] = useState((flex?.duration_minutes ?? 60) % 60);
+  const [durationH, setDurationH] = useState(Math.floor((flex?.duration_minutes ?? 0) / 60));
+  const [durationM, setDurationM] = useState((flex?.duration_minutes ?? 0) % 60);
   const [preferredDays, setPreferredDays] = useState<number[]>(flex?.preferred_days ?? []);
   const [timesPerWeek, setTimesPerWeek] = useState<number | "">(flex?.times_per_week ?? "");
 
@@ -56,6 +56,12 @@ export function HabitForm({
 
     const url = habit ? `/api/habits/${habit.id}` : "/api/habits";
     const method = habit ? "PUT" : "POST";
+
+    if (!type) {
+      setLoading(false);
+      setError("Please select a habit type");
+      return;
+    }
 
     const payload =
       type === "fixed"
@@ -96,7 +102,8 @@ export function HabitForm({
         </div>
         <div>
           <label className="block text-sm font-medium">Type</label>
-          <select value={type} onChange={(e) => setType(e.target.value as "fixed" | "flexible")} className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">
+          <select value={type} onChange={(e) => setType(e.target.value as "" | "fixed" | "flexible")} required className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">
+            <option value="" disabled>Select type</option>
             <option value="fixed">Fixed</option>
             <option value="flexible">Flexible</option>
           </select>
@@ -112,15 +119,17 @@ export function HabitForm({
                 {dayNames.map((d, idx) => (<option key={d} value={idx}>{d}</option>))}
               </select>
               <select value={s.start_time} onChange={(e) => setFixedSlots((prev) => prev.map((x, idx) => idx === i ? { ...x, start_time: e.target.value } : x))} className="rounded border border-zinc-300 px-2 py-2 dark:border-zinc-600 dark:bg-zinc-800">
+                <option value="" disabled>Start time</option>
                 {timeOptions.map((t) => <option key={t} value={t}>{t.slice(0,5)}</option>)}
               </select>
               <select value={s.end_time} onChange={(e) => setFixedSlots((prev) => prev.map((x, idx) => idx === i ? { ...x, end_time: e.target.value } : x))} className="rounded border border-zinc-300 px-2 py-2 dark:border-zinc-600 dark:bg-zinc-800">
+                <option value="" disabled>End time</option>
                 {timeOptions.map((t) => <option key={t} value={t}>{t.slice(0,5)}</option>)}
               </select>
               <button type="button" onClick={() => setFixedSlots((prev) => prev.filter((_, idx) => idx !== i))} className="rounded border border-zinc-300 px-3 py-2 text-sm text-red-600 dark:border-zinc-600">Remove</button>
             </div>
           ))}
-          <button type="button" onClick={() => setFixedSlots((prev) => [...prev, { day_of_week: 1, start_time: "20:00:00", end_time: "21:00:00" }])} className="text-sm text-zinc-600 dark:text-zinc-400">+ Add fixed slot</button>
+          <button type="button" onClick={() => setFixedSlots((prev) => [...prev, { day_of_week: 1, start_time: "", end_time: "" }])} className="text-sm text-zinc-600 dark:text-zinc-400">+ Add fixed slot</button>
         </div>
       ) : (
         <div className="mt-4 space-y-2">
