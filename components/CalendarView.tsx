@@ -115,19 +115,20 @@ export function CalendarView({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="grid grid-cols-7 border-b border-zinc-200 dark:border-zinc-800">
-          {WEEKDAY_FULL.map((day) => (
-            <div
-              key={day}
-              className="border-r border-zinc-200 px-0.5 py-2 text-center text-[10px] font-medium leading-tight text-zinc-500 last:border-r-0 sm:text-xs dark:border-zinc-800 dark:text-zinc-400"
-            >
-              {day}
-            </div>
-          ))}
-        </div>
+      <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="min-w-[760px]">
+          <div className="grid grid-cols-7 border-b border-zinc-200 dark:border-zinc-800">
+            {WEEKDAY_FULL.map((day) => (
+              <div
+                key={day}
+                className="border-r border-zinc-200 px-0.5 py-2 text-center text-[10px] font-medium leading-tight text-zinc-500 last:border-r-0 sm:text-xs dark:border-zinc-800 dark:text-zinc-400"
+              >
+                {day}
+              </div>
+            ))}
+          </div>
 
-        <div className="grid grid-cols-7">
+          <div className="grid grid-cols-7">
           {cells.map((cell, i) => {
             if (!cell.date) {
               return <div key={`empty-${i}`} className="min-h-[8rem] border-r border-b border-zinc-100 bg-zinc-50/40 last:border-r-0 dark:border-zinc-800 dark:bg-zinc-950/30 md:min-h-[9.5rem]" />;
@@ -178,6 +179,7 @@ export function CalendarView({
               </Link>
             );
           })}
+          </div>
         </div>
       </div>
     </div>

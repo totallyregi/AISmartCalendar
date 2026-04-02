@@ -31,8 +31,16 @@ export function Sidebar({
 
   return (
     <>
+      {!collapsed && (
+        <button
+          type="button"
+          aria-label="Close sidebar overlay"
+          onClick={onToggle}
+          className="fixed inset-0 z-20 bg-black/40 lg:hidden"
+        />
+      )}
       <aside
-        className={`sidebar fixed left-0 top-0 z-30 flex h-full w-64 flex-col border-r border-zinc-200 bg-white transition-transform duration-200 dark:border-zinc-800 dark:bg-zinc-900 ${
+        className={`sidebar fixed left-0 top-0 z-30 flex h-full w-64 max-w-[85vw] flex-col border-r border-zinc-200 bg-white transition-transform duration-200 dark:border-zinc-800 dark:bg-zinc-900 ${
           collapsed ? "-translate-x-full" : "translate-x-0"
         }`}
         aria-hidden={collapsed}
