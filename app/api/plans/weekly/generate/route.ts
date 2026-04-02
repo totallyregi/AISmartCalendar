@@ -50,6 +50,14 @@ function buildAllowedSlotsForDay(dayKey: string, dayWindows: { start_time: strin
   return slots;
 }
 
+/** Wide local window (06:00–23:45) for overflow assignment placement when preferred windows are full */
+const OVERFLOW_DAY_WINDOW = [{ start_time: "06:00:00", end_time: "23:45:00" }] as const;
+
+function buildOverflowSlotsForDay(dayKey: string, timeZone: string, mergedBusy: Interval[], now: Date) {
+  const allowed = buildAllowedSlotsForDay(dayKey, [...OVERFLOW_DAY_WINDOW], timeZone);
+  return removeBusy(allowed, mergedBusy).filter((slot) => slot.end > now);
+}
+
 function contiguousCount(slots: Interval[], startIndex: number) {
   let count = 1;
   for (let i = startIndex + 1; i < slots.length; i++) {
@@ -141,8 +149,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const [extRes, classRes, fixedHabitRes, flexHabitRes, assignmentRes, prefRes, windowRes, priorDraftRes] = await Promise.all([
+  const [extRes, appliedPlanRes, userEventRes, classRes, fixedHabitRes, flexHabitRes, assignmentRes, prefRes, windowRes, priorDraftRes] = await Promise.all([
     supabase.from("external_events").select("starts_at,ends_at").eq("user_id", user.id).gte("starts_at", weekStartUtc.toISOString()).lt("starts_at", weekEndUtc.toISOString()),
+    supabase
+      .from("weekly_plan_blocks")
+      .select("starts_at,ends_at")
+      .eq("user_id", user.id)
+      .eq("origin", "applied")
+      .gte("starts_at", weekStartUtc.toISOString())
+      .lt("starts_at", weekEndUtc.toISOString()),
+    supabase.from("user_events").select("starts_at,ends_at").eq("user_id", user.id).gte("starts_at", weekStartUtc.toISOString()).lt("starts_at", weekEndUtc.toISOString()),
     supabase.from("class_sections").select("class_meetings(day_of_week,start_time,end_time)").eq("user_id", user.id),
     supabase.from("habits").select("id,name,habit_fixed_slots(day_of_week,start_time,end_time)").eq("user_id", user.id).eq("type", "fixed").eq("active", true),
     supabase.from("habits").select("id,name,habit_flexible_rules(duration_minutes,preferred_days,times_per_week)").eq("user_id", user.id).eq("type", "flexible").eq("active", true),
@@ -167,6 +183,8 @@ export async function POST(request: Request) {
 
   const busy: Interval[] = [];
   (extRes.data ?? []).forEach((e) => busy.push({ start: new Date(e.starts_at as string), end: new Date(e.ends_at as string) }));
+  (appliedPlanRes.data ?? []).forEach((e) => busy.push({ start: new Date(e.starts_at as string), end: new Date(e.ends_at as string) }));
+  (userEventRes.data ?? []).forEach((e) => busy.push({ start: new Date(e.starts_at as string), end: new Date(e.ends_at as string) }));
 
   pushBusyFromRecurring(
     busy,
@@ -178,6 +196,7 @@ export async function POST(request: Request) {
 
   const mergedBusy = mergeIntervals(busy);
   const daySlots = new Map<string, Interval[]>();
+  const overflowDaySlots = new Map<string, Interval[]>();
   const dayUsed = new Map<string, Set<number>>();
   const dayAssignedMinutes = new Map<string, number>();
 
@@ -193,6 +212,7 @@ export async function POST(request: Request) {
     const allowed = dayWindows.length ? buildAllowedSlotsForDay(dateKey, dayWindows, timeZone) : [];
     const free = removeBusy(allowed, mergedBusy).filter((slot) => slot.end > now);
     daySlots.set(dateKey, free);
+    overflowDaySlots.set(dateKey, buildOverflowSlotsForDay(dateKey, timeZone, mergedBusy, now));
     dayUsed.set(dateKey, new Set<number>());
     dayAssignedMinutes.set(dateKey, 0);
   }
@@ -213,67 +233,82 @@ export async function POST(request: Request) {
     remaining_minutes: number;
   }[];
 
+  const assignmentRemaining = new Map<string, number>();
+  for (const a of assignments) {
+    const draftAllocated = priorDraftMinutesByAssignment[a.id] ?? 0;
+    assignmentRemaining.set(a.id, Math.max(0, Number(a.remaining_minutes ?? 0) - draftAllocated));
+  }
+
   const dayOrderForward = Array.from({ length: 7 }, (_, i) => addDaysToDateKey(weekStartDate, i));
   const dayOrderBackward = [...dayOrderForward].reverse();
 
-  for (const a of assignments) {
-    const draftAllocated = priorDraftMinutesByAssignment[a.id] ?? 0;
-    let remaining = Math.max(0, Number(a.remaining_minutes ?? 0) - draftAllocated);
-    if (!remaining) continue;
+  function placeAssignmentPass(slotMap: Map<string, Interval[]>, usePreferredDayCap: boolean) {
+    for (const a of assignments) {
+      let remaining = assignmentRemaining.get(a.id) ?? 0;
+      if (remaining <= 0) continue;
 
-    const due = new Date(a.due_at);
-    const dayOrder = mode === "lazy" ? dayOrderBackward : dayOrderForward;
+      const due = new Date(a.due_at);
+      const dayOrder = mode === "lazy" ? dayOrderBackward : dayOrderForward;
 
-    for (const dayKey of dayOrder) {
-      if (remaining <= 0) break;
-      const dayDate = zonedDateTimeToUtc(dayKey, "00:00:00", timeZone);
-      if (dayDate >= due) continue;
+      for (const dayKey of dayOrder) {
+        if (remaining <= 0) break;
+        const dayDate = zonedDateTimeToUtc(dayKey, "00:00:00", timeZone);
+        if (dayDate >= due) continue;
 
-      const slots = daySlots.get(dayKey) ?? [];
-      const used = dayUsed.get(dayKey) ?? new Set<number>();
-      const already = dayAssignedMinutes.get(dayKey) ?? 0;
+        const slots = slotMap.get(dayKey) ?? [];
+        const used = dayUsed.get(dayKey) ?? new Set<number>();
+        const already = dayAssignedMinutes.get(dayKey) ?? 0;
 
-      let dayTarget = modeDailyTarget(mode, prefs.min_daily_minutes, prefs.preferred_daily_minutes, prefs.max_daily_minutes);
-      dayTarget = Math.min(dayTarget, prefs.max_daily_minutes);
-      let dayRemaining = Math.max(0, dayTarget - already);
+        let dayRemaining: number;
+        if (usePreferredDayCap) {
+          let dayTarget = modeDailyTarget(mode, prefs.min_daily_minutes, prefs.preferred_daily_minutes, prefs.max_daily_minutes);
+          dayTarget = Math.min(dayTarget, prefs.max_daily_minutes);
+          dayRemaining = Math.max(0, dayTarget - already);
+          if (mode === "lazy" && remaining < dayRemaining) dayRemaining = remaining;
+        } else {
+          dayRemaining = Math.max(0, prefs.max_daily_minutes - already);
+          if (mode === "lazy" && remaining < dayRemaining) dayRemaining = remaining;
+        }
 
-      // Do not force min when workload is low (requested behavior).
-      if (mode === "lazy" && remaining < dayRemaining) dayRemaining = remaining;
+        for (let i = 0; i < slots.length && remaining > 0 && dayRemaining > 0; i++) {
+          if (isUsed(used, slots[i])) continue;
+          if (slots[i].start >= due) continue;
 
-      for (let i = 0; i < slots.length && remaining > 0 && dayRemaining > 0; i++) {
-        if (isUsed(used, slots[i])) continue;
-        if (slots[i].start >= due) continue;
+          const contiguous = contiguousCount(slots, i);
+          const maxIntervalsByConsecutive = Math.floor(prefs.max_consecutive_minutes / 15);
+          const maxIntervalsByDay = Math.floor(dayRemaining / 15);
+          const maxIntervalsByRemaining = Math.floor(remaining / 15);
+          const takeIntervals = Math.min(contiguous, maxIntervalsByConsecutive, maxIntervalsByDay, maxIntervalsByRemaining);
 
-        const contiguous = contiguousCount(slots, i);
-        const maxIntervalsByConsecutive = Math.floor(prefs.max_consecutive_minutes / 15);
-        const maxIntervalsByDay = Math.floor(dayRemaining / 15);
-        const maxIntervalsByRemaining = Math.floor(remaining / 15);
-        const takeIntervals = Math.min(contiguous, maxIntervalsByConsecutive, maxIntervalsByDay, maxIntervalsByRemaining);
+          if (takeIntervals <= 0) continue;
 
-        if (takeIntervals <= 0) continue;
+          const start = slots[i].start;
+          const end = slots[i + takeIntervals - 1].end;
+          blocks.push({
+            block_type: "assignment",
+            title: `Assignment: ${a.name}`,
+            starts_at: start.toISOString(),
+            ends_at: end.toISOString(),
+            assignment_id: a.id,
+          });
 
-        const start = slots[i].start;
-        const end = slots[i + takeIntervals - 1].end;
-        blocks.push({
-          block_type: "assignment",
-          title: `Assignment: ${a.name}`,
-          starts_at: start.toISOString(),
-          ends_at: end.toISOString(),
-          assignment_id: a.id,
-        });
+          reserveRange(used, slots, i, takeIntervals);
+          const blockMinutes = takeIntervals * 15;
+          remaining -= blockMinutes;
+          dayRemaining -= blockMinutes;
+          dayAssignedMinutes.set(dayKey, (dayAssignedMinutes.get(dayKey) ?? 0) + blockMinutes);
 
-        reserveRange(used, slots, i, takeIntervals);
-        const blockMinutes = takeIntervals * 15;
-        remaining -= blockMinutes;
-        dayRemaining -= blockMinutes;
-        dayAssignedMinutes.set(dayKey, (dayAssignedMinutes.get(dayKey) ?? 0) + blockMinutes);
-
-        // Reserve break slots after each consecutive work chunk.
-        const breakIntervals = Math.floor(prefs.break_minutes / 15);
-        if (breakIntervals > 0) reserveRange(used, slots, i + takeIntervals, breakIntervals);
+          const breakIntervals = Math.floor(prefs.break_minutes / 15);
+          if (breakIntervals > 0) reserveRange(used, slots, i + takeIntervals, breakIntervals);
+        }
       }
+
+      assignmentRemaining.set(a.id, remaining);
     }
   }
+
+  placeAssignmentPass(daySlots, true);
+  placeAssignmentPass(overflowDaySlots, false);
 
   // Flexible habits remain existing behavior (not constrained by assignment workload prefs).
   const flexHabits = (flexHabitRes.data ?? []) as {
@@ -368,6 +403,20 @@ export async function POST(request: Request) {
     .filter((b) => b.block_type === "assignment")
     .reduce((sum, b) => sum + minutesBetween(new Date(b.starts_at), new Date(b.ends_at)), 0);
 
+  const unscheduled = assignments
+    .map((a) => {
+      const rem = assignmentRemaining.get(a.id) ?? 0;
+      return rem > 0
+        ? { assignmentId: a.id, name: a.name, remainingMinutes: rem, dueAt: a.due_at }
+        : null;
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+
+  const warning =
+    unscheduled.length > 0
+      ? "Not enough free time before some due dates. Remove or move events on your main calendar, widen preferred work windows in Preferences, or adjust due dates."
+      : undefined;
+
   return NextResponse.json({
     ok: true,
     weekStart: weekStartDate,
@@ -375,5 +424,7 @@ export async function POST(request: Request) {
     blocks: mergedBlocks.length,
     assignmentMinutes,
     perDay: Object.fromEntries(dayAssignedMinutes),
+    unscheduled,
+    ...(warning ? { warning } : {}),
   });
 }

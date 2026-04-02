@@ -38,6 +38,7 @@ export function DashboardPlanner({
   const [mode, setMode] = useState<SchedulerMode>("relaxed");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [scheduleWarning, setScheduleWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<PlannerStatus | null>(null);
   const [preferencesConfigured, setPreferencesConfigured] = useState(false);
@@ -68,6 +69,7 @@ export function DashboardPlanner({
     setLoading(true);
     setError(null);
     setMessage(null);
+    setScheduleWarning(null);
     const res = await fetch("/api/plans/weekly/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -84,6 +86,15 @@ export function DashboardPlanner({
     }
     const hours = Number(data.assignmentMinutes ?? 0) / 60;
     setMessage(`Generated ${data.blocks ?? 0} suggested blocks (${hours.toFixed(1)}h assignment time) for week ${data.weekStart} in ${data.mode ?? mode} mode`);
+    const unsched = Array.isArray(data.unscheduled) ? data.unscheduled : [];
+    if (unsched.length > 0) {
+      const detail = unsched
+        .map((u: { name: string; remainingMinutes: number }) => `${u.name} (${u.remainingMinutes} min not scheduled)`)
+        .join("; ");
+      setScheduleWarning(`${data.warning ?? "Some assignment time could not fit before due dates."} ${detail}`);
+    } else {
+      setScheduleWarning(null);
+    }
     await loadDraft();
     router.refresh();
   }
@@ -213,6 +224,11 @@ export function DashboardPlanner({
       )}
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
       {message && <p className="text-sm text-emerald-700 dark:text-emerald-400">{message}</p>}
+      {scheduleWarning && (
+        <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
+          {scheduleWarning}
+        </p>
+      )}
     </div>
   );
 }

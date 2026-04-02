@@ -106,13 +106,13 @@ export function CalendarView({
               >
                 <span className={`text-sm font-medium ${isToday ? "text-amber-700 dark:text-amber-400" : "text-zinc-700 dark:text-zinc-300"}`}>{cell.label}</span>
                 <div className="mt-1 flex flex-wrap gap-1">
-                  {meta.external > 0 && <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />}
-                  {meta.classes > 0 && <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />}
-                  {meta.fixedHabits > 0 && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
-                  {meta.flexibleHabits > 0 && <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />}
-                  {meta.assignments > 0 && <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />}
-                  {showGeneratedDots && meta.generated > 0 && <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />}
-                  {meta.personal > 0 && <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />}
+                  {meta.external > 0 && <span className="h-2 w-2 rounded-full bg-indigo-500 ring-1 ring-indigo-400/40 dark:ring-indigo-400/25" />}
+                  {meta.classes > 0 && <span className="h-2 w-2 rounded-full bg-violet-500 ring-1 ring-violet-400/40 dark:ring-violet-400/25" />}
+                  {meta.fixedHabits > 0 && <span className="h-2 w-2 rounded-full bg-green-600 ring-1 ring-green-400/40 dark:ring-green-400/25" />}
+                  {meta.flexibleHabits > 0 && <span className="h-2 w-2 rounded-full bg-fuchsia-500 ring-1 ring-fuchsia-400/40 dark:ring-fuchsia-400/25" />}
+                  {meta.assignments > 0 && <span className="h-2 w-2 rounded-full bg-orange-500 ring-1 ring-orange-400/40 dark:ring-orange-400/25" />}
+                  {showGeneratedDots && meta.generated > 0 && <span className="h-2 w-2 rounded-full bg-amber-500 ring-1 ring-amber-400/40 dark:ring-amber-400/25" />}
+                  {meta.personal > 0 && <span className="h-2 w-2 rounded-full bg-rose-500 ring-1 ring-rose-400/40 dark:ring-rose-400/25" />}
                 </div>
               </Link>
             );
