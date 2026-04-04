@@ -17,6 +17,9 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/calendar";
 
+  const RESET_COOLDOWN_MS = 2 * 60 * 1000; // avoid spamming Supabase reset emails
+  const RESET_AT_KEY = "aismartcalendar:lastPasswordResetAt";
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -37,6 +40,19 @@ function LoginForm() {
     setResetError(null);
     setResetMessage(null);
 
+    // Client-side throttle to prevent Supabase "email rate limit exceeded".
+    const now = Date.now();
+    if (typeof window !== "undefined") {
+      const lastAt = Number(window.localStorage.getItem(RESET_AT_KEY) ?? "0");
+      const remaining = RESET_COOLDOWN_MS - (now - lastAt);
+      if (lastAt > 0 && remaining > 0) {
+        const secs = Math.ceil(remaining / 1000);
+        setResetLoading(false);
+        setResetError(`Too many password reset requests. Please wait ${secs}s and try again.`);
+        return;
+      }
+    }
+
     const supabase = createClient();
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
     const { error: resetErr } = await supabase.auth.resetPasswordForEmail(email, {
@@ -44,8 +60,17 @@ function LoginForm() {
     });
 
     setResetLoading(false);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(RESET_AT_KEY, String(Date.now()));
+    }
+
     if (resetErr) {
-      setResetError(resetErr.message);
+      const msg = resetErr.message ?? "Failed to request reset email";
+      if (msg.toLowerCase().includes("rate limit")) {
+        setResetError("Too many password reset requests. Please wait a few minutes and try again.");
+        return;
+      }
+      setResetError(msg);
       return;
     }
 

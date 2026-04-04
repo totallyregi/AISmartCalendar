@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { SignOutButton } from "@/components/SignOutButton";
 import { ChangePasswordModal } from "@/components/ChangePasswordModal";
+import { AutoTimezoneBootstrap } from "@/components/AutoTimezoneBootstrap";
+import { AppTutorialModal } from "@/components/AppTutorialModal";
 
 export function ProtectedShell({
   email,
@@ -16,6 +18,11 @@ export function ProtectedShell({
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!window.matchMedia("(max-width: 1023px)").matches) return;
+    queueMicrotask(() => setSidebarCollapsed(true));
+  }, []);
 
   useEffect(() => {
     if (!profileMenuOpen) return;
@@ -32,6 +39,8 @@ export function ProtectedShell({
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+      <AutoTimezoneBootstrap />
+      <AppTutorialModal />
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((v) => !v)} />
       <div className={`transition-[padding] duration-200 ${sidebarCollapsed ? "pl-0" : "lg:pl-64"}`}>
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-zinc-200 bg-white/80 px-4 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/80 sm:px-6">

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { WEEKDAY_FULL, formatTimeHhmmssTo12h } from "@/lib/datetimeDisplay";
+import { WEEKDAY_FULL } from "@/lib/datetimeDisplay";
+import { TimePicker12h } from "@/components/TimePicker12h";
 
 type HabitLike = {
   id: string;
@@ -30,11 +31,14 @@ type FlexibleSlotRow = { day_of_week: number; start_time: string; end_time: stri
 type FlexiblePreferenceMode = "preferred_days" | "times_per_week";
 
 const minuteOptions = [0, 15, 30, 45];
-const timeOptions = Array.from({ length: 24 * 4 }).map((_, i) => {
-  const h = Math.floor(i / 4);
-  const m = (i % 4) * 15;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`;
-});
+
+function normalizeSlotTimes<T extends { start_time: string; end_time: string }>(s: T): T {
+  return {
+    ...s,
+    start_time: s.start_time || "09:00:00",
+    end_time: s.end_time || "10:00:00",
+  };
+}
 
 export function HabitForm({
   habit,
@@ -48,7 +52,7 @@ export function HabitForm({
   const [name, setName] = useState(habit?.name ?? "");
   const [type, setType] = useState<"" | "fixed" | "flexible">(habit?.type ?? "");
   const [fixedSlots, setFixedSlots] = useState<FixedSlotRow[]>(
-    habit?.habit_fixed_slots?.length ? habit.habit_fixed_slots.map((s) => ({ ...s })) : []
+    habit?.habit_fixed_slots?.length ? habit.habit_fixed_slots.map((s) => normalizeSlotTimes({ ...s })) : []
   );
 
   const flexRules = habit?.habit_flexible_rules as unknown;
@@ -60,7 +64,7 @@ export function HabitForm({
   const [timesPerWeek, setTimesPerWeek] = useState<number | "">(flex?.times_per_week ?? "");
   const [preferredSlots, setPreferredSlots] = useState<FlexibleSlotRow[]>(
     habit?.habit_flexible_preferred_slots?.length
-      ? habit.habit_flexible_preferred_slots.map((s) => ({ ...s }))
+      ? habit.habit_flexible_preferred_slots.map((s) => normalizeSlotTimes({ ...s }))
       : []
   );
 
@@ -74,7 +78,7 @@ export function HabitForm({
         return prev.filter((x) => x !== d);
       }
       // Add a placeholder hours row for this day. User must choose start/end times.
-      setPreferredSlots((slots) => [...slots, { day_of_week: d, start_time: "", end_time: "" }]);
+      setPreferredSlots((slots) => [...slots, { day_of_week: d, start_time: "09:00:00", end_time: "10:00:00" }]);
       return [...prev, d];
     });
   };
@@ -230,41 +234,27 @@ export function HabitForm({
                   ))}
                 </select>
               </div>
-              <div className="min-w-[7.5rem] flex-1">
+              <div className="min-w-[10rem] flex-1">
                 <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Start</label>
-                <select
-                  value={s.start_time}
-                  onChange={(e) => setFixedSlots((prev) => prev.map((x, idx) => (idx === i ? { ...x, start_time: e.target.value } : x)))}
-                  required
-                  className="w-full rounded-md border border-zinc-300 px-2 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800"
-                >
-                  <option value="" disabled>
-                    Start time
-                  </option>
-                  {timeOptions.map((t) => (
-                    <option key={t} value={t}>
-                      {formatTimeHhmmssTo12h(t)}
-                    </option>
-                  ))}
-                </select>
+                <TimePicker12h
+                  idPrefix={`habit-fixed-${i}-s`}
+                  minuteStep={15}
+                  value={s.start_time || "09:00:00"}
+                  onChange={(v) =>
+                    setFixedSlots((prev) => prev.map((x, idx) => (idx === i ? { ...x, start_time: v } : x)))
+                  }
+                />
               </div>
-              <div className="min-w-[7.5rem] flex-1">
+              <div className="min-w-[10rem] flex-1">
                 <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">End</label>
-                <select
-                  value={s.end_time}
-                  onChange={(e) => setFixedSlots((prev) => prev.map((x, idx) => (idx === i ? { ...x, end_time: e.target.value } : x)))}
-                  required
-                  className="w-full rounded-md border border-zinc-300 px-2 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800"
-                >
-                  <option value="" disabled>
-                    End time
-                  </option>
-                  {timeOptions.map((t) => (
-                    <option key={`e-${t}`} value={t}>
-                      {formatTimeHhmmssTo12h(t)}
-                    </option>
-                  ))}
-                </select>
+                <TimePicker12h
+                  idPrefix={`habit-fixed-${i}-e`}
+                  minuteStep={15}
+                  value={s.end_time || "10:00:00"}
+                  onChange={(v) =>
+                    setFixedSlots((prev) => prev.map((x, idx) => (idx === i ? { ...x, end_time: v } : x)))
+                  }
+                />
               </div>
               <button
                 type="button"
@@ -277,7 +267,7 @@ export function HabitForm({
           ))}
           <button
             type="button"
-            onClick={() => setFixedSlots((prev) => [...prev, { day_of_week: -1, start_time: "", end_time: "" }])}
+            onClick={() => setFixedSlots((prev) => [...prev, { day_of_week: -1, start_time: "09:00:00", end_time: "10:00:00" }])}
             className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
           >
             + Add fixed slot
@@ -346,7 +336,12 @@ export function HabitForm({
               <label className="block text-sm">Preferred hours by day</label>
               <button
                 type="button"
-                onClick={() => setPreferredSlots((prev) => [...prev, { day_of_week: preferredDays[0] ?? 1, start_time: "", end_time: "" }])}
+                onClick={() =>
+                  setPreferredSlots((prev) => [
+                    ...prev,
+                    { day_of_week: preferredDays[0] ?? 1, start_time: "09:00:00", end_time: "10:00:00" },
+                  ])
+                }
                 className="text-xs font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
               >
                 + Add preferred hours
@@ -374,42 +369,28 @@ export function HabitForm({
                       </option>
                     ))}
                   </select>
-                  <select
-                    value={s.start_time}
-                    onChange={(e) =>
+                  <TimePicker12h
+                    idPrefix={`habit-flex-${i}-s`}
+                    minuteStep={15}
+                    value={s.start_time || "09:00:00"}
+                    onChange={(v) =>
                       setPreferredSlots((prev) =>
-                        prev.map((x, idx) => (idx === i ? { ...x, start_time: e.target.value } : x))
+                        prev.map((x, idx) => (idx === i ? { ...x, start_time: v } : x))
                       )
                     }
-                    className="rounded border border-zinc-300 px-2 py-2 dark:border-zinc-600 dark:bg-zinc-800"
-                  >
-                    <option value="" disabled>
-                      Start time
-                    </option>
-                    {timeOptions.map((t) => (
-                      <option key={t} value={t}>
-                        {formatTimeHhmmssTo12h(t)}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={s.end_time}
-                    onChange={(e) =>
+                    className="sm:col-span-1"
+                  />
+                  <TimePicker12h
+                    idPrefix={`habit-flex-${i}-e`}
+                    minuteStep={15}
+                    value={s.end_time || "10:00:00"}
+                    onChange={(v) =>
                       setPreferredSlots((prev) =>
-                        prev.map((x, idx) => (idx === i ? { ...x, end_time: e.target.value } : x))
+                        prev.map((x, idx) => (idx === i ? { ...x, end_time: v } : x))
                       )
                     }
-                    className="rounded border border-zinc-300 px-2 py-2 dark:border-zinc-600 dark:bg-zinc-800"
-                  >
-                    <option value="" disabled>
-                      End time
-                    </option>
-                    {timeOptions.map((t) => (
-                      <option key={`f-${t}`} value={t}>
-                        {formatTimeHhmmssTo12h(t)}
-                      </option>
-                    ))}
-                  </select>
+                    className="sm:col-span-1"
+                  />
                   <button
                     type="button"
                     onClick={() => setPreferredSlots((prev) => prev.filter((_, idx) => idx !== i))}

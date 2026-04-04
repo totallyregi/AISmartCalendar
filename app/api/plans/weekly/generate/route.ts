@@ -50,14 +50,6 @@ function buildAllowedSlotsForDay(dayKey: string, dayWindows: { start_time: strin
   return slots;
 }
 
-/** Wide local window (06:00–23:45) for overflow assignment placement when preferred windows are full */
-const OVERFLOW_DAY_WINDOW = [{ start_time: "06:00:00", end_time: "23:45:00" }] as const;
-
-function buildOverflowSlotsForDay(dayKey: string, timeZone: string, mergedBusy: Interval[], now: Date) {
-  const allowed = buildAllowedSlotsForDay(dayKey, [...OVERFLOW_DAY_WINDOW], timeZone);
-  return removeBusy(allowed, mergedBusy).filter((slot) => slot.end > now);
-}
-
 function contiguousCount(slots: Interval[], startIndex: number) {
   let count = 1;
   for (let i = startIndex + 1; i < slots.length; i++) {
@@ -201,7 +193,6 @@ export async function POST(request: Request) {
 
   const mergedBusy = mergeIntervals(busy);
   const daySlots = new Map<string, Interval[]>();
-  const overflowDaySlots = new Map<string, Interval[]>();
   const dayUsed = new Map<string, Set<number>>();
   const dayAssignedMinutes = new Map<string, number>();
 
@@ -214,7 +205,6 @@ export async function POST(request: Request) {
     const allowed = dayWindows.length ? buildAllowedSlotsForDay(dateKey, dayWindows, timeZone) : [];
     const free = removeBusy(allowed, mergedBusy).filter((slot) => slot.end > now);
     daySlots.set(dateKey, free);
-    overflowDaySlots.set(dateKey, buildOverflowSlotsForDay(dateKey, timeZone, mergedBusy, now));
     dayUsed.set(dateKey, new Set<number>());
     dayAssignedMinutes.set(dateKey, 0);
   }
@@ -309,8 +299,8 @@ export async function POST(request: Request) {
     }
   }
 
+  // Assignments only inside preferred work windows (no early-morning / full-day overflow).
   placeAssignmentPass(daySlots, true);
-  placeAssignmentPass(overflowDaySlots, false);
 
   // Flexible habits use mode-aware frequency and preferred-hour placement.
   const flexHabits = (flexHabitRes.data ?? []) as {

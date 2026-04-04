@@ -23,6 +23,7 @@ async function ensurePreference(supabase: Awaited<ReturnType<typeof createClient
       max_consecutive_minutes: 120,
       break_minutes: 30,
       default_apply_days: DEFAULT_DAYS,
+      // DB fallback until client PATCH sets IANA tz from the browser (see PATCH handler).
       timezone: "America/Chicago",
     })
     .select("*")
@@ -30,6 +31,50 @@ async function ensurePreference(supabase: Awaited<ReturnType<typeof createClient
 
   if (error) throw new Error(error.message);
   return created;
+}
+
+const SEED_TIMEZONE = "America/Chicago";
+
+/** Auto timezone: only updates when preferences still use the seed default and user has not completed bootstrap. */
+export async function PATCH(request: Request) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (user.user_metadata && (user.user_metadata as { timezone_set?: boolean }).timezone_set === true) {
+    return NextResponse.json({ skipped: true, reason: "timezone_set" });
+  }
+
+  const body = await request.json().catch(() => ({}));
+  let timezone = typeof body.timezone === "string" ? body.timezone.trim() : "";
+  const vercelTz = request.headers.get("x-vercel-ip-timezone");
+  if (!timezone && vercelTz && isValidTimeZone(vercelTz)) {
+    timezone = vercelTz;
+  }
+  if (!timezone || !isValidTimeZone(timezone)) {
+    return NextResponse.json({ error: "Valid IANA timezone required (e.g. from Intl)" }, { status: 400 });
+  }
+
+  try {
+    const preference = await ensurePreference(supabase, user.id);
+    if (preference.timezone !== SEED_TIMEZONE) {
+      return NextResponse.json({ skipped: true, reason: "not_seed" });
+    }
+
+    const { data, error } = await supabase
+      .from("scheduler_preferences")
+      .update({ timezone, updated_at: new Date().toISOString() })
+      .eq("user_id", user.id)
+      .select("*")
+      .single();
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ preference: data });
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Failed to update timezone" }, { status: 500 });
+  }
 }
 
 export async function GET() {

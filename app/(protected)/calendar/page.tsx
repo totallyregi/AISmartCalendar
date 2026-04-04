@@ -237,6 +237,13 @@ export default async function CalendarPage({
         timeZone={timeZone}
         basePath="/calendar"
         showGeneratedDots={false}
+        monthAgendaEvents={dayEvents.map((e) => ({
+          id: e.id,
+          starts_at: e.starts_at,
+          ends_at: e.ends_at,
+          title: e.title,
+          source: e.source,
+        }))}
       />
       <WeekTimeline date={selectedDate} events={selectedEvents} mode="main" timeZone={timeZone} />
     </div>

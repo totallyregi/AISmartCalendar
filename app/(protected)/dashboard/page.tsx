@@ -18,6 +18,8 @@ type TimelineEvent = {
   ends_at: string;
   title: string;
   source: "external" | "class" | "fixed_habit" | "flexible_habit" | "assignment" | "generated" | "personal";
+  class_meeting_id?: string;
+  class_id?: string;
   fromWeeklyPlan?: boolean;
 };
 
@@ -108,6 +110,8 @@ export default async function DashboardPage({
         ensure(d).classes += 1;
         events.push({
           id: `${m.id}_${d}`,
+          class_meeting_id: m.id,
+          class_id: c.id as string,
           starts_at: zonedDateTimeToUtc(d, startTime, timeZone).toISOString(),
           ends_at: zonedDateTimeToUtc(d, endTime, timeZone).toISOString(),
           title: `${c.class_code} ${c.class_name}`,
@@ -194,6 +198,13 @@ export default async function DashboardPage({
         timeZone={timeZone}
         basePath="/dashboard"
         showGeneratedDots
+        monthAgendaEvents={events.map((e) => ({
+          id: e.id,
+          starts_at: e.starts_at,
+          ends_at: e.ends_at,
+          title: e.title,
+          source: e.source,
+        }))}
       />
       <WeekTimeline date={selectedDate} events={selectedEvents} mode="ai" timeZone={timeZone} />
     </div>

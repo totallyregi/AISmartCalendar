@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { DEFAULT_USER_TIMEZONE, WEEKDAY_FULL, formatTimeHhmmssTo12h } from "@/lib/datetimeDisplay";
+import { TimePicker12h } from "@/components/TimePicker12h";
+import { createClient } from "@/lib/supabase/client";
 
 type Preference = {
   min_daily_minutes: number;
@@ -20,12 +22,6 @@ type WindowRow = {
   end_time: string;
   is_override: boolean;
 };
-
-const timeOptions = Array.from({ length: 24 * 4 }).map((_, i) => {
-  const h = Math.floor(i / 4);
-  const m = (i % 4) * 15;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`;
-});
 
 const TIMEZONES = [
   { value: "UTC", label: "UTC+00:00 (UTC, London winter)" },
@@ -65,8 +61,8 @@ export default function PreferencesPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [newDay, setNewDay] = useState<number | "">("");
-  const [newStart, setNewStart] = useState("");
-  const [newEnd, setNewEnd] = useState("");
+  const [newStart, setNewStart] = useState("09:00:00");
+  const [newEnd, setNewEnd] = useState("17:00:00");
 
   async function loadData() {
     const res = await fetch("/api/preferences/scheduler");
@@ -111,6 +107,11 @@ export default function PreferencesPage() {
       return;
     }
     setMessage("Preferences saved");
+    try {
+      await createClient().auth.updateUser({ data: { timezone_set: true } });
+    } catch {
+      /* non-fatal */
+    }
   }
 
   async function addWindow() {
@@ -132,6 +133,8 @@ export default function PreferencesPage() {
 
     setWindows((prev) => [...prev, data]);
     setMessage("Window added");
+    setNewStart("09:00:00");
+    setNewEnd("17:00:00");
   }
 
   async function removeWindow(id: string) {
@@ -246,26 +249,14 @@ export default function PreferencesPage() {
               </option>
             ))}
           </select>
-          <select value={newStart} onChange={(e) => setNewStart(e.target.value)} className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">
-            <option value="" disabled>
-              Start Time
-            </option>
-            {timeOptions.map((t) => (
-              <option key={t} value={t}>
-                {formatTimeHhmmssTo12h(t)}
-              </option>
-            ))}
-          </select>
-          <select value={newEnd} onChange={(e) => setNewEnd(e.target.value)} className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">
-            <option value="" disabled>
-              End Time
-            </option>
-            {timeOptions.map((t) => (
-              <option key={`end-${t}`} value={t}>
-                {formatTimeHhmmssTo12h(t)}
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">Start</span>
+            <TimePicker12h idPrefix="pref-win-s" minuteStep={15} value={newStart} onChange={setNewStart} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">End</span>
+            <TimePicker12h idPrefix="pref-win-e" minuteStep={15} value={newEnd} onChange={setNewEnd} />
+          </div>
           <button type="button" onClick={addWindow} disabled={loading} className="rounded bg-zinc-900 px-3 py-2 text-sm text-white disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900">
             Add window
           </button>

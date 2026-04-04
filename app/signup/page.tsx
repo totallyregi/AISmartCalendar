@@ -23,7 +23,13 @@ export default function SignupPage() {
     const { error: err } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { display_name: displayName || undefined } },
+      options: {
+        data: {
+          display_name: displayName || undefined,
+          // Shown once after first login; cleared in AppTutorialModal (not localStorage).
+          pending_first_login_tutorial: true,
+        },
+      },
     });
     setLoading(false);
     if (err) {

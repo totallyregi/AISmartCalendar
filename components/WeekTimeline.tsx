@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useState } from "react";
+import { EventEditModal } from "@/components/EventEditModal";
 
 type Event = {
   id: string;
@@ -32,7 +33,9 @@ const sourceCls: Record<Event["source"], string> = {
 };
 
 export function WeekTimeline({ date, events, mode, timeZone = "UTC" }: { date: string; events: Event[]; mode: "main" | "ai"; timeZone?: string }) {
-  const localMinutesOfDay = useCallback((iso: string) => {
+  const [editing, setEditing] = useState<Event | null>(null);
+
+  function localMinutesOfDay(iso: string) {
     const parts = new Intl.DateTimeFormat("en-US", {
       timeZone,
       hour12: false,
@@ -43,57 +46,17 @@ export function WeekTimeline({ date, events, mode, timeZone = "UTC" }: { date: s
     const h = Number(map.hour ?? "0");
     const m = Number(map.minute ?? "0");
     return h * 60 + m;
-  }, [timeZone]);
-
-  const sortedEvents = useMemo(
-    () =>
-      [...events].sort((a, b) => {
-        const byLocalTime = localMinutesOfDay(a.starts_at) - localMinutesOfDay(b.starts_at);
-        if (byLocalTime !== 0) return byLocalTime;
-        return new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
-      }),
-    [events, localMinutesOfDay]
-  );
-
-  async function editDraft(e: Event) {
-    const title = prompt("Edit title", e.title) ?? e.title;
-    const starts = prompt("Start datetime (ISO)", e.starts_at) ?? e.starts_at;
-    const ends = prompt("End datetime (ISO)", e.ends_at) ?? e.ends_at;
-    await fetch(`/api/ai-draft-blocks/${e.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, starts_at: starts, ends_at: ends }),
-    });
-    window.location.reload();
   }
+
+  const sortedEvents = [...events].sort((a, b) => {
+    const byLocalTime = localMinutesOfDay(a.starts_at) - localMinutesOfDay(b.starts_at);
+    if (byLocalTime !== 0) return byLocalTime;
+    return new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
+  });
 
   async function deleteDraft(e: Event) {
     if (!confirm("Delete this AI suggestion?")) return;
     await fetch(`/api/ai-draft-blocks/${e.id}`, { method: "DELETE" });
-    window.location.reload();
-  }
-
-  async function editPersonal(e: Event) {
-    const title = prompt("Event title", e.title) ?? e.title;
-    const starts = prompt("Start datetime (ISO)", e.starts_at) ?? e.starts_at;
-    const ends = prompt("End datetime (ISO)", e.ends_at) ?? e.ends_at;
-    await fetch(`/api/user-events/${e.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, starts_at: starts, ends_at: ends }),
-    });
-    window.location.reload();
-  }
-
-  async function editGeneratedMain(e: Event) {
-    const title = prompt("Edit title", e.title) ?? e.title;
-    const starts = prompt("Start datetime (ISO)", e.starts_at) ?? e.starts_at;
-    const ends = prompt("End datetime (ISO)", e.ends_at) ?? e.ends_at;
-    await fetch(`/api/weekly-plan-blocks/${e.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, starts_at: starts, ends_at: ends }),
-    });
     window.location.reload();
   }
 
@@ -103,32 +66,9 @@ export function WeekTimeline({ date, events, mode, timeZone = "UTC" }: { date: s
     window.location.reload();
   }
 
-  async function editFixedHabit(e: Event) {
-    const start = prompt("Start time HH:MM:SS", "12:00:00") ?? "12:00:00";
-    const end = prompt("End time HH:MM:SS", "13:00:00") ?? "13:00:00";
-    await fetch(`/api/habit-fixed-slots/${e.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ start_time: start, end_time: end }),
-    });
-    window.location.reload();
-  }
-
   async function deleteFixedHabit(e: Event) {
     if (!confirm("Delete this fixed habit slot?")) return;
     await fetch(`/api/habit-fixed-slots/${e.id}`, { method: "DELETE" });
-    window.location.reload();
-  }
-
-  async function editExternal(e: Event) {
-    const summary = prompt("Event title", e.title) ?? e.title;
-    const starts = prompt("Start datetime (ISO)", e.starts_at) ?? e.starts_at;
-    const ends = prompt("End datetime (ISO)", e.ends_at) ?? e.ends_at;
-    await fetch(`/api/external-events/${e.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ summary, starts_at: starts, ends_at: ends }),
-    });
     window.location.reload();
   }
 
@@ -154,30 +94,13 @@ export function WeekTimeline({ date, events, mode, timeZone = "UTC" }: { date: s
     window.location.reload();
   }
 
-  async function editClassForDate(e: Event) {
-    if (!e.class_meeting_id || !e.class_id) return;
-    const start = prompt("Override start time HH:MM:SS", "10:00:00") ?? "10:00:00";
-    const end = prompt("Override end time HH:MM:SS", "11:00:00") ?? "11:00:00";
-    await fetch(`/api/classes/overrides`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        class_meeting_id: e.class_meeting_id,
-        class_id: e.class_id,
-        override_date: date,
-        canceled: false,
-        override_start_time: start,
-        override_end_time: end,
-      }),
-    });
-    window.location.reload();
-  }
-
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
       <div className="mb-1 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">{date} details</h3>
-        <span className="text-xs text-zinc-500 dark:text-zinc-400">{events.length} item{events.length === 1 ? "" : "s"}</span>
+        <span className="text-xs text-zinc-500 dark:text-zinc-400">
+          {events.length} item{events.length === 1 ? "" : "s"}
+        </span>
       </div>
       {sortedEvents.length === 0 ? (
         <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">No events for this day.</p>
@@ -199,38 +122,62 @@ export function WeekTimeline({ date, events, mode, timeZone = "UTC" }: { date: s
               <div className="flex flex-wrap gap-2 text-xs">
                 {mode === "ai" && e.source === "generated" && (
                   <>
-                    <button onClick={() => editDraft(e)} className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600">Edit</button>
-                    <button onClick={() => deleteDraft(e)} className="rounded border border-red-300 px-2 py-1 text-red-600 dark:border-red-700">Delete</button>
+                    <button type="button" onClick={() => setEditing(e)} className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600">
+                      Edit
+                    </button>
+                    <button type="button" onClick={() => deleteDraft(e)} className="rounded border border-red-300 px-2 py-1 text-red-600 dark:border-red-700">
+                      Delete
+                    </button>
                   </>
                 )}
                 {mode === "main" && e.source === "personal" && (
                   <>
-                    <button onClick={() => editPersonal(e)} className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600">Edit</button>
-                    <button onClick={() => deletePersonal(e)} className="rounded border border-red-300 px-2 py-1 text-red-600 dark:border-red-700">Delete</button>
+                    <button type="button" onClick={() => setEditing(e)} className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600">
+                      Edit
+                    </button>
+                    <button type="button" onClick={() => deletePersonal(e)} className="rounded border border-red-300 px-2 py-1 text-red-600 dark:border-red-700">
+                      Delete
+                    </button>
                   </>
                 )}
-                {mode === "main" && e.source === "class" && e.class_meeting_id && (
+                {mode === "main" && e.source === "class" && e.class_meeting_id && e.class_id && (
                   <>
-                    <button onClick={() => editClassForDate(e)} className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600">Edit</button>
-                    <button onClick={() => cancelClassForDate(e)} className="rounded border border-red-300 px-2 py-1 text-red-600 dark:border-red-700">Delete</button>
+                    <button type="button" onClick={() => setEditing(e)} className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600">
+                      Edit
+                    </button>
+                    <button type="button" onClick={() => cancelClassForDate(e)} className="rounded border border-red-300 px-2 py-1 text-red-600 dark:border-red-700">
+                      Delete
+                    </button>
                   </>
                 )}
                 {mode === "main" && e.fromWeeklyPlan && (
                   <>
-                    <button onClick={() => editGeneratedMain(e)} className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600">Edit</button>
-                    <button onClick={() => deleteGeneratedMain(e)} className="rounded border border-red-300 px-2 py-1 text-red-600 dark:border-red-700">Delete</button>
+                    <button type="button" onClick={() => setEditing(e)} className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600">
+                      Edit
+                    </button>
+                    <button type="button" onClick={() => deleteGeneratedMain(e)} className="rounded border border-red-300 px-2 py-1 text-red-600 dark:border-red-700">
+                      Delete
+                    </button>
                   </>
                 )}
                 {mode === "main" && e.source === "fixed_habit" && !e.fromWeeklyPlan && (
                   <>
-                    <button onClick={() => editFixedHabit(e)} className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600">Edit</button>
-                    <button onClick={() => deleteFixedHabit(e)} className="rounded border border-red-300 px-2 py-1 text-red-600 dark:border-red-700">Delete</button>
+                    <button type="button" onClick={() => setEditing(e)} className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600">
+                      Edit
+                    </button>
+                    <button type="button" onClick={() => deleteFixedHabit(e)} className="rounded border border-red-300 px-2 py-1 text-red-600 dark:border-red-700">
+                      Delete
+                    </button>
                   </>
                 )}
                 {mode === "main" && e.source === "external" && (
                   <>
-                    <button onClick={() => editExternal(e)} className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600">Edit</button>
-                    <button onClick={() => deleteExternal(e)} className="rounded border border-red-300 px-2 py-1 text-red-600 dark:border-red-700">Delete</button>
+                    <button type="button" onClick={() => setEditing(e)} className="rounded border border-zinc-300 px-2 py-1 dark:border-zinc-600">
+                      Edit
+                    </button>
+                    <button type="button" onClick={() => deleteExternal(e)} className="rounded border border-red-300 px-2 py-1 text-red-600 dark:border-red-700">
+                      Delete
+                    </button>
                   </>
                 )}
               </div>
@@ -238,6 +185,8 @@ export function WeekTimeline({ date, events, mode, timeZone = "UTC" }: { date: s
           ))}
         </ul>
       )}
+
+      <EventEditModal open={!!editing} event={editing} mode={mode} timeZone={timeZone} onClose={() => setEditing(null)} />
     </div>
   );
 }

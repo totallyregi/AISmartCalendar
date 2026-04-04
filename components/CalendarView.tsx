@@ -1,10 +1,11 @@
 "use client";
 
-import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { WEEKDAY_FULL } from "@/lib/datetimeDisplay";
 import type { CalendarDayMeta } from "@/lib/calendarMeta";
 import { emptyDayMeta } from "@/lib/calendarMeta";
+import { DayAgendaModal, type DayAgendaEvent } from "@/components/DayAgendaModal";
 const MONTH_NAMES = [
   "January",
   "February",
@@ -43,6 +44,7 @@ export function CalendarView({
   timeZone = "UTC",
   basePath = "/calendar",
   showGeneratedDots = false,
+  monthAgendaEvents = [],
 }: {
   year: number;
   month: number;
@@ -54,8 +56,30 @@ export function CalendarView({
   basePath?: "/calendar" | "/dashboard";
   /** Only the AI Calendar month grid shows draft “generated” dots */
   showGeneratedDots?: boolean;
+  /** Full-month events for the day agenda popout (same sources as the timeline). */
+  monthAgendaEvents?: DayAgendaEvent[];
 }) {
   const router = useRouter();
+  const [agendaOpen, setAgendaOpen] = useState(false);
+  const [agendaDate, setAgendaDate] = useState<string | null>(null);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setAgendaOpen(false);
+      setAgendaDate(null);
+    });
+  }, [year, month]);
+
+  const agendaForDay = useMemo(() => {
+    if (!agendaDate) return [];
+    return monthAgendaEvents.filter((e) => e.starts_at.slice(0, 10) === agendaDate);
+  }, [monthAgendaEvents, agendaDate]);
+
+  function openDay(dateStr: string) {
+    setAgendaDate(dateStr);
+    setAgendaOpen(true);
+    router.push(`${basePath}?year=${year}&month=${month}&date=${dateStr}`, { scroll: false });
+  }
   const first = new Date(year, month - 1, 1);
   const last = new Date(year, month, 0);
   const startPad = first.getDay();
@@ -72,13 +96,13 @@ export function CalendarView({
   function prevMonth() {
     const m = month === 1 ? 12 : month - 1;
     const y = month === 1 ? year - 1 : year;
-    router.push(`${basePath}?year=${y}&month=${m}`);
+    router.push(`${basePath}?year=${y}&month=${m}`, { scroll: false });
   }
 
   function nextMonth() {
     const m = month === 12 ? 1 : month + 1;
     const y = month === 12 ? year + 1 : year;
-    router.push(`${basePath}?year=${y}&month=${m}`);
+    router.push(`${basePath}?year=${y}&month=${m}`, { scroll: false });
   }
 
   function formatPreviewTime(iso: string) {
@@ -134,10 +158,11 @@ export function CalendarView({
               return <div key={`empty-${i}`} className="min-h-[8rem] border-r border-b border-zinc-100 bg-zinc-50/40 last:border-r-0 dark:border-zinc-800 dark:bg-zinc-950/30 md:min-h-[9.5rem]" />;
             }
 
-            const meta = dayMeta[cell.date] ?? emptyDayMeta();
-            const isToday = cell.date === today;
-            const isSelected = cell.date === selectedDate;
-            const dayPreviews = [...(dayPreview[cell.date] ?? [])].sort((a, b) => {
+            const dayKey = cell.date;
+            const meta = dayMeta[dayKey] ?? emptyDayMeta();
+            const isToday = dayKey === today;
+            const isSelected = dayKey === selectedDate;
+            const dayPreviews = [...(dayPreview[dayKey] ?? [])].sort((a, b) => {
               const byLocal = localSortMinutes(a.starts_at) - localSortMinutes(b.starts_at);
               if (byLocal !== 0) return byLocal;
               return a.starts_at.localeCompare(b.starts_at);
@@ -146,10 +171,11 @@ export function CalendarView({
             const hiddenCount = Math.max(0, dayPreviews.length - previews.length);
 
             return (
-              <Link
-                key={cell.date}
-                href={`${basePath}?year=${year}&month=${month}&date=${cell.date}`}
-                className={`flex min-h-[8rem] flex-col border-r border-b border-zinc-100 p-2 transition-colors last:border-r-0 hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-800 md:min-h-[9.5rem] ${
+              <button
+                type="button"
+                key={dayKey}
+                onClick={() => openDay(dayKey)}
+                className={`flex min-h-[8rem] w-full flex-col border-r border-b border-zinc-100 p-2 text-left transition-colors last:border-r-0 hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-800 md:min-h-[9.5rem] ${
                   isSelected ? "bg-zinc-100 dark:bg-zinc-800" : isToday ? "bg-amber-50 dark:bg-amber-950/20" : "bg-white dark:bg-zinc-900"
                 }`}
               >
@@ -176,12 +202,23 @@ export function CalendarView({
                     <div className="text-[10px] text-zinc-500 dark:text-zinc-400">+{hiddenCount} more</div>
                   )}
                 </div>
-              </Link>
+              </button>
             );
           })}
           </div>
         </div>
       </div>
+
+      <DayAgendaModal
+        open={agendaOpen && !!agendaDate}
+        date={agendaDate ?? selectedDate}
+        timeZone={timeZone}
+        events={agendaForDay}
+        onClose={() => {
+          setAgendaOpen(false);
+          setAgendaDate(null);
+        }}
+      />
     </div>
   );
 }

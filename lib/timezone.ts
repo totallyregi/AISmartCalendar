@@ -52,6 +52,16 @@ export function zonedDateKey(date: Date, timeZone: string) {
   return `${p.year}-${String(p.month).padStart(2, "0")}-${String(p.day).padStart(2, "0")}`;
 }
 
+/** Local wall-clock time in `timeZone`, snapped to `minuteStep`, as `HH:mm:00`. */
+export function zonedHhMmSs(iso: string, timeZone: string, minuteStep: 1 | 5 | 15): string {
+  const p = partsInTimeZone(new Date(iso), timeZone);
+  const total = p.hour * 60 + p.minute;
+  const snapped = Math.min(24 * 60 - 1, Math.max(0, Math.round(total / minuteStep) * minuteStep));
+  const h24 = Math.floor(snapped / 60);
+  const m = snapped % 60;
+  return `${String(h24).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`;
+}
+
 export function addDaysToDateKey(dateKey: string, days: number) {
   const base = new Date(`${dateKey}T00:00:00Z`);
   base.setUTCDate(base.getUTCDate() + days);

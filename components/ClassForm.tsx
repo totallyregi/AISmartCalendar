@@ -1,21 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { ClassMeeting, ClassSection } from "@/lib/types";
-import { WEEKDAY_FULL, formatTimeHhmmssTo12h } from "@/lib/datetimeDisplay";
+import { WEEKDAY_FULL } from "@/lib/datetimeDisplay";
+import { TimePicker12h } from "@/components/TimePicker12h";
 
 /** `-1` means day not chosen yet (placeholder). */
 type MeetingFormRow = Omit<ClassMeeting, "day_of_week"> & { day_of_week: number };
-
-function buildTimeOptions() {
-  const out: string[] = [];
-  for (let h = 0; h < 24; h++) {
-    for (let m = 0; m < 60; m += 15) {
-      out.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`);
-    }
-  }
-  return out;
-}
 
 export function ClassForm({
   item,
@@ -29,12 +20,16 @@ export function ClassForm({
   const [classCode, setClassCode] = useState(item?.class_code ?? "");
   const [className, setClassName] = useState(item?.class_name ?? "");
   const [meetings, setMeetings] = useState<MeetingFormRow[]>(() =>
-    item?.class_meetings?.length ? (item.class_meetings as MeetingFormRow[]) : []
+    item?.class_meetings?.length
+      ? (item.class_meetings as MeetingFormRow[]).map((m) => ({
+          ...m,
+          start_time: m.start_time || "09:00:00",
+          end_time: m.end_time || "10:00:00",
+        }))
+      : []
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const timeOptions = useMemo(() => buildTimeOptions(), []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -85,7 +80,7 @@ export function ClassForm({
   }
 
   function addMeeting() {
-    setMeetings((prev) => [...prev, { day_of_week: -1, start_time: "", end_time: "" }]);
+    setMeetings((prev) => [...prev, { day_of_week: -1, start_time: "09:00:00", end_time: "10:00:00" }]);
   }
 
   function removeMeeting(i: number) {
@@ -125,7 +120,7 @@ export function ClassForm({
 
       <div className="mt-4 space-y-3">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Meeting slots (15-min intervals)</p>
+          <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Meeting times (15-minute steps)</p>
           <button
             type="button"
             onClick={addMeeting}
@@ -161,41 +156,23 @@ export function ClassForm({
                 ))}
               </select>
             </div>
-            <div className="min-w-[7.5rem] flex-1">
+            <div className="min-w-[10rem] flex-1">
               <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Start</label>
-              <select
-                value={m.start_time}
-                onChange={(e) => updateMeeting(i, { start_time: e.target.value })}
-                required
-                className="w-full rounded-md border border-zinc-300 px-2 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800"
-              >
-                <option value="" disabled>
-                  Start time
-                </option>
-                {timeOptions.map((t) => (
-                  <option key={t} value={t}>
-                    {formatTimeHhmmssTo12h(t)}
-                  </option>
-                ))}
-              </select>
+              <TimePicker12h
+                idPrefix={`class-${i}-s`}
+                minuteStep={15}
+                value={m.start_time || "09:00:00"}
+                onChange={(v) => updateMeeting(i, { start_time: v })}
+              />
             </div>
-            <div className="min-w-[7.5rem] flex-1">
+            <div className="min-w-[10rem] flex-1">
               <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">End</label>
-              <select
-                value={m.end_time}
-                onChange={(e) => updateMeeting(i, { end_time: e.target.value })}
-                required
-                className="w-full rounded-md border border-zinc-300 px-2 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800"
-              >
-                <option value="" disabled>
-                  End time
-                </option>
-                {timeOptions.map((t) => (
-                  <option key={`e-${t}`} value={t}>
-                    {formatTimeHhmmssTo12h(t)}
-                  </option>
-                ))}
-              </select>
+              <TimePicker12h
+                idPrefix={`class-${i}-e`}
+                minuteStep={15}
+                value={m.end_time || "10:00:00"}
+                onChange={(v) => updateMeeting(i, { end_time: v })}
+              />
             </div>
             <button
               type="button"
