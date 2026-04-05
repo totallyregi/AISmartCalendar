@@ -459,18 +459,24 @@ export async function POST(request: Request) {
     .filter((b) => b.block_type === "assignment")
     .reduce((sum, b) => sum + minutesBetween(new Date(b.starts_at), new Date(b.ends_at)), 0);
 
+  // Week is [weekStartDate .. weekEndDate) in date keys; weekEndDate is the first day *after* the week.
+  // Only warn about unscheduled work when the assignment is actually due by end of this generated week
+  // (before start of that next day in the user's TZ). Later due dates can be placed in future weeks.
+  const weekExclusiveEndUtc = zonedDateTimeToUtc(weekEndDate, "00:00:00", timeZone);
+
   const unscheduled = assignments
     .map((a) => {
       const rem = assignmentRemaining.get(a.id) ?? 0;
-      return rem > 0
-        ? { assignmentId: a.id, name: a.name, remainingMinutes: rem, dueAt: a.due_at }
-        : null;
+      if (rem <= 0) return null;
+      const dueMs = new Date(a.due_at).getTime();
+      if (dueMs >= weekExclusiveEndUtc.getTime()) return null;
+      return { assignmentId: a.id, name: a.name, remainingMinutes: rem, dueAt: a.due_at };
     })
     .filter((x): x is NonNullable<typeof x> => x !== null);
 
   const warning =
     unscheduled.length > 0
-      ? "Not enough free time before some due dates. Remove or move events on your main calendar, widen preferred work windows in Preferences, or adjust due dates."
+      ? "Not enough free time before some due dates this week. Remove or move events on your main calendar, widen preferred work windows in Preferences, or adjust due dates."
       : undefined;
 
   return NextResponse.json({
