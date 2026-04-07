@@ -141,7 +141,28 @@ export async function POST(request: Request) {
     );
   }
 
-  const [extRes, appliedPlanRes, userEventRes, classRes, fixedHabitRes, flexHabitRes, assignmentRes, prefRes, windowRes, priorDraftRes] = await Promise.all([
+  // Past weeks cannot be regenerated (see check above). Remove orphaned unapplied drafts for those weeks so the AI Calendar does not keep showing stale blocks and they never affect future runs.
+  const { error: deleteStaleDraftsErr } = await supabase
+    .from("ai_draft_blocks")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("applied", false)
+    .lt("week_start_date", currentWeekStart);
+  if (deleteStaleDraftsErr) {
+    return NextResponse.json({ error: deleteStaleDraftsErr.message }, { status: 500 });
+  }
+
+  // Drop existing drafts for this week so regeneration does not subtract same-week minutes; stale past-week rows are excluded from prior sum below.
+  const { error: deleteWeekDraftsErr } = await supabase
+    .from("ai_draft_blocks")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("week_start_date", weekStartDate);
+  if (deleteWeekDraftsErr) {
+    return NextResponse.json({ error: deleteWeekDraftsErr.message }, { status: 500 });
+  }
+
+  const [extRes, appliedPlanRes, userEventRes, classRes, fixedHabitRes, flexHabitRes, assignmentRes, prefRes, windowRes] = await Promise.all([
     supabase.from("external_events").select("starts_at,ends_at").eq("user_id", user.id).gte("starts_at", weekStartUtc.toISOString()).lt("starts_at", weekEndUtc.toISOString()),
     supabase
       .from("weekly_plan_blocks")
@@ -164,8 +185,15 @@ export async function POST(request: Request) {
     supabase.from("assignments").select("*").eq("user_id", user.id).neq("status", "done").order("due_at", { ascending: true }),
     supabase.from("scheduler_preferences").select("*").eq("user_id", user.id).single(),
     supabase.from("scheduler_preferred_windows").select("day_of_week,start_time,end_time,is_override").eq("user_id", user.id),
-    supabase.from("ai_draft_blocks").select("assignment_id,starts_at,ends_at").eq("user_id", user.id).eq("applied", false).not("assignment_id", "is", null),
   ]);
+
+  const { data: priorDraftRows } = await supabase
+    .from("ai_draft_blocks")
+    .select("assignment_id,starts_at,ends_at")
+    .eq("user_id", user.id)
+    .eq("applied", false)
+    .not("assignment_id", "is", null)
+    .gte("week_start_date", currentWeekStart);
 
   if (!prefRes.data) {
     return NextResponse.json({ error: "Please save Preferences before generating a schedule." }, { status: 400 });
@@ -211,14 +239,16 @@ export async function POST(request: Request) {
 
   const blocks: { block_type: string; title: string; starts_at: string; ends_at: string; assignment_id?: string; habit_id?: string }[] = [];
   const priorDraftMinutesByAssignment: Record<string, number> = {};
-  (priorDraftRes.data ?? []).forEach((d) => {
+  (priorDraftRows ?? []).forEach((d) => {
     const assignmentId = d.assignment_id as string | null;
     if (!assignmentId) return;
     const mins = minutesBetween(new Date(String(d.starts_at)), new Date(String(d.ends_at)));
     priorDraftMinutesByAssignment[assignmentId] = (priorDraftMinutesByAssignment[assignmentId] ?? 0) + mins;
   });
 
-  const assignments = (assignmentRes.data ?? []) as {
+  const assignments = [...(assignmentRes.data ?? [])].sort(
+    (x, y) => new Date((x as { due_at: string }).due_at).getTime() - new Date((y as { due_at: string }).due_at).getTime()
+  ) as {
     id: string;
     name: string;
     due_at: string;
@@ -241,58 +271,81 @@ export async function POST(request: Request) {
 
       const due = new Date(a.due_at);
       const dayOrder = mode === "lazy" ? dayOrderBackward : dayOrderForward;
+      const preferEarlierStart = mode !== "lazy";
 
-      for (const dayKey of dayOrder) {
-        if (remaining <= 0) break;
-        const dayDate = zonedDateTimeToUtc(dayKey, "00:00:00", timeZone);
-        if (dayDate >= due) continue;
+      while (remaining > 0) {
+        let bestTake = 0;
+        let bestDayKey: string | null = null;
+        let bestIndex = -1;
+        let bestStartMs = preferEarlierStart ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
 
-        const slots = slotMap.get(dayKey) ?? [];
-        const used = dayUsed.get(dayKey) ?? new Set<number>();
-        const already = dayAssignedMinutes.get(dayKey) ?? 0;
+        for (const dayKey of dayOrder) {
+          const dayDate = zonedDateTimeToUtc(dayKey, "00:00:00", timeZone);
+          if (dayDate >= due) continue;
 
-        let dayRemaining: number;
-        if (usePreferredDayCap) {
-          let dayTarget = modeDailyTarget(mode, prefs.min_daily_minutes, prefs.preferred_daily_minutes, prefs.max_daily_minutes);
-          dayTarget = Math.min(dayTarget, prefs.max_daily_minutes);
-          dayRemaining = Math.max(0, dayTarget - already);
-          if (mode === "lazy" && remaining < dayRemaining) dayRemaining = remaining;
-        } else {
-          dayRemaining = Math.max(0, prefs.max_daily_minutes - already);
-          if (mode === "lazy" && remaining < dayRemaining) dayRemaining = remaining;
-        }
+          const slots = slotMap.get(dayKey) ?? [];
+          const used = dayUsed.get(dayKey) ?? new Set<number>();
+          const already = dayAssignedMinutes.get(dayKey) ?? 0;
 
-        for (let i = 0; i < slots.length && remaining > 0 && dayRemaining > 0; i++) {
-          if (isUsed(used, slots[i])) continue;
-          if (slots[i].start >= due) continue;
+          let dayRemaining: number;
+          if (usePreferredDayCap) {
+            let dayTarget = modeDailyTarget(mode, prefs.min_daily_minutes, prefs.preferred_daily_minutes, prefs.max_daily_minutes);
+            dayTarget = Math.min(dayTarget, prefs.max_daily_minutes);
+            dayRemaining = Math.max(0, dayTarget - already);
+            if (mode === "lazy" && remaining < dayRemaining) dayRemaining = remaining;
+          } else {
+            dayRemaining = Math.max(0, prefs.max_daily_minutes - already);
+            if (mode === "lazy" && remaining < dayRemaining) dayRemaining = remaining;
+          }
 
-          const contiguous = contiguousCount(slots, i);
           const maxIntervalsByConsecutive = Math.floor(prefs.max_consecutive_minutes / 15);
           const maxIntervalsByDay = Math.floor(dayRemaining / 15);
           const maxIntervalsByRemaining = Math.floor(remaining / 15);
-          const takeIntervals = Math.min(contiguous, maxIntervalsByConsecutive, maxIntervalsByDay, maxIntervalsByRemaining);
 
-          if (takeIntervals <= 0) continue;
+          for (let i = 0; i < slots.length; i++) {
+            if (isUsed(used, slots[i])) continue;
+            if (slots[i].start >= due) continue;
 
-          const start = slots[i].start;
-          const end = slots[i + takeIntervals - 1].end;
-          blocks.push({
-            block_type: "assignment",
-          title: a.name,
-            starts_at: start.toISOString(),
-            ends_at: end.toISOString(),
-            assignment_id: a.id,
-          });
+            const contiguous = contiguousCount(slots, i);
+            const takeIntervals = Math.min(contiguous, maxIntervalsByConsecutive, maxIntervalsByDay, maxIntervalsByRemaining);
 
-          reserveRange(used, slots, i, takeIntervals);
-          const blockMinutes = takeIntervals * 15;
-          remaining -= blockMinutes;
-          dayRemaining -= blockMinutes;
-          dayAssignedMinutes.set(dayKey, (dayAssignedMinutes.get(dayKey) ?? 0) + blockMinutes);
+            if (takeIntervals <= 0) continue;
 
-          const breakIntervals = Math.floor(prefs.break_minutes / 15);
-          if (breakIntervals > 0) reserveRange(used, slots, i + takeIntervals, breakIntervals);
+            const startMs = slots[i].start.getTime();
+            const betterTie =
+              preferEarlierStart ? startMs < bestStartMs : startMs > bestStartMs;
+            if (takeIntervals > bestTake || (takeIntervals === bestTake && betterTie)) {
+              bestTake = takeIntervals;
+              bestDayKey = dayKey;
+              bestIndex = i;
+              bestStartMs = startMs;
+            }
+          }
         }
+
+        if (bestTake <= 0 || bestDayKey === null || bestIndex < 0) break;
+
+        const slots = slotMap.get(bestDayKey) ?? [];
+        const used = dayUsed.get(bestDayKey) ?? new Set<number>();
+        const i = bestIndex;
+
+        const start = slots[i].start;
+        const end = slots[i + bestTake - 1].end;
+        blocks.push({
+          block_type: "assignment",
+          title: a.name,
+          starts_at: start.toISOString(),
+          ends_at: end.toISOString(),
+          assignment_id: a.id,
+        });
+
+        reserveRange(used, slots, i, bestTake);
+        const blockMinutes = bestTake * 15;
+        remaining -= blockMinutes;
+        dayAssignedMinutes.set(bestDayKey, (dayAssignedMinutes.get(bestDayKey) ?? 0) + blockMinutes);
+
+        const breakIntervals = Math.floor(prefs.break_minutes / 15);
+        if (breakIntervals > 0) reserveRange(used, slots, i + bestTake, breakIntervals);
       }
 
       assignmentRemaining.set(a.id, remaining);

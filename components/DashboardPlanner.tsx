@@ -175,12 +175,14 @@ export function DashboardPlanner({
         )}
         <div className="flex items-center justify-between gap-2 rounded border border-zinc-200/80 p-2 dark:border-zinc-700/80">
           <div className="text-xs text-zinc-500">
-            {status?.generatedWeeks?.length ? "Regenerating requires reset." : "No generated chain yet."}
+            {(status?.totalDraftBlocks ?? 0) > 0
+              ? "Clears all unapplied AI draft blocks (any week), then you can generate from the current week again."
+              : "No AI draft suggestions in the database."}
           </div>
           <button
             type="button"
             onClick={resetSuggestions}
-            disabled={loading || !(status?.hasDraftChain)}
+            disabled={loading || (status?.totalDraftBlocks ?? 0) === 0}
             className="rounded border border-red-300 px-3 py-1 text-xs text-red-600 disabled:opacity-50 dark:border-red-700"
           >
             Reset suggestions
