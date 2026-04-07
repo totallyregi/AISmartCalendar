@@ -6,11 +6,14 @@ import { createClient } from "@/lib/supabase/server";
 import { DEFAULT_USER_TIMEZONE } from "@/lib/datetimeDisplay";
 import type { CalendarDayMeta } from "@/lib/calendarMeta";
 import { emptyDayMeta, incrementMetaForWeeklyBlock, timelineSourceFromWeeklyBlockType } from "@/lib/calendarMeta";
-import { isValidTimeZone, weekStartSundayDateKey, zonedDateKey, zonedDateTimeToUtc } from "@/lib/timezone";
-
-function dateOnly(value: string) {
-  return value.slice(0, 10);
-}
+import {
+  dayOfWeekFromDateKey,
+  isValidTimeZone,
+  weekStartSundayDateKey,
+  zonedDateKey,
+  zonedDateKeyFromIso,
+  zonedDateTimeToUtc,
+} from "@/lib/timezone";
 
 type TimelineEvent = {
   id: string;
@@ -88,16 +91,15 @@ export default async function DashboardPage({
   };
 
   (extRes.data ?? []).forEach((e) => {
-    const d = dateOnly(e.starts_at as string);
+    const d = zonedDateKeyFromIso(e.starts_at as string, timeZone);
     ensure(d).external += 1;
     events.push({ id: e.id as string, starts_at: e.starts_at as string, ends_at: e.ends_at as string, title: (e.summary as string) || "External", source: "external" });
   });
 
   const daysInMonth = new Date(year, month, 0).getDate();
   for (let day = 1; day <= daysInMonth; day++) {
-    const dt = new Date(year, month - 1, day);
-    const d = dt.toISOString().slice(0, 10);
-    const dow = dt.getDay();
+    const d = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const dow = dayOfWeekFromDateKey(d, timeZone);
 
     (classRes.data ?? []).forEach((c) => {
       (c.class_meetings ?? []).forEach((m: { id: string; day_of_week: number; start_time: string; end_time: string }) => {
@@ -137,7 +139,7 @@ export default async function DashboardPage({
   }
 
   (appliedRes.data ?? []).forEach((b) => {
-    const d = dateOnly(b.starts_at as string);
+    const d = zonedDateKeyFromIso(b.starts_at as string, timeZone);
     const bt = (b.block_type as string) ?? "assignment";
     incrementMetaForWeeklyBlock(ensure(d), bt);
     events.push({
@@ -151,13 +153,13 @@ export default async function DashboardPage({
   });
 
   (userEventRes.data ?? []).forEach((e) => {
-    const d = dateOnly(e.starts_at as string);
+    const d = zonedDateKeyFromIso(e.starts_at as string, timeZone);
     ensure(d).personal += 1;
     events.push({ id: e.id as string, starts_at: e.starts_at as string, ends_at: e.ends_at as string, title: e.title as string, source: "personal" });
   });
 
   (draftRes.data ?? []).forEach((b) => {
-    const d = dateOnly(b.starts_at as string);
+    const d = zonedDateKeyFromIso(b.starts_at as string, timeZone);
     ensure(d).generated += 1;
     events.push({
       id: b.id as string,
@@ -168,10 +170,12 @@ export default async function DashboardPage({
     });
   });
 
-  const selectedEvents = events.filter((e) => dateOnly(e.starts_at) === selectedDate).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  const selectedEvents = events
+    .filter((e) => zonedDateKeyFromIso(e.starts_at, timeZone) === selectedDate)
+    .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
   const dayPreviewByDate: Record<string, CalendarPreviewEvent[]> = {};
   for (const e of events) {
-    const d = dateOnly(e.starts_at);
+    const d = zonedDateKeyFromIso(e.starts_at, timeZone);
     if (!dayPreviewByDate[d]) dayPreviewByDate[d] = [];
     dayPreviewByDate[d].push({ starts_at: e.starts_at, title: e.title, source: e.source });
   }

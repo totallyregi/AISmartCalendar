@@ -20,6 +20,9 @@ export type DayAgendaEvent = {
 
 const DAY_MINUTES = 24 * 60;
 
+/** Pixel height for the full 24h strip — larger = less cramped blocks when many events cluster in one part of the day */
+const TIMELINE_DAY_HEIGHT_PX = 960;
+
 const sourceCls: Record<DayAgendaEvent["source"], string> = {
   external: "border-l-indigo-500 bg-indigo-50/90 text-indigo-900 dark:border-l-indigo-400 dark:bg-indigo-950/40 dark:text-indigo-200",
   class: "border-l-violet-500 bg-violet-50/90 text-violet-900 dark:border-l-violet-400 dark:bg-violet-950/40 dark:text-violet-200",
@@ -128,71 +131,95 @@ export function DayAgendaModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="day-agenda-title">
-      <button type="button" className="absolute inset-0 bg-black/40" aria-label="Close" onClick={onClose} />
-      <div className="relative flex max-h-[min(92vh,860px)] w-full max-w-lg flex-col rounded-t-2xl border border-zinc-200 bg-white shadow-xl dark:border-zinc-700 dark:bg-zinc-900 sm:rounded-2xl">
-        <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-700">
-          <h2 id="day-agenda-title" className="text-base font-semibold leading-snug text-zinc-900 dark:text-zinc-100">
-            {dayTitle}
-          </h2>
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-5 lg:p-8"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="day-agenda-title"
+    >
+      <button type="button" className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" aria-label="Close" onClick={onClose} />
+      <div className="relative flex max-h-[min(94vh,920px)] w-full max-w-[min(96vw,56rem)] flex-col overflow-hidden rounded-t-2xl border border-zinc-200/90 bg-white shadow-2xl ring-1 ring-black/5 dark:border-zinc-600 dark:bg-zinc-900 dark:ring-white/10 sm:rounded-2xl">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-zinc-200 px-5 py-4 dark:border-zinc-700 sm:px-6">
+          <div>
+            <h2 id="day-agenda-title" className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-xl">
+              {dayTitle}
+            </h2>
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Times in {timeZone}</p>
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            className="shrink-0 rounded-lg px-3.5 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
           >
             Close
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-          <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">Times in {timeZone}</p>
-
-          <div className="max-h-[min(70vh,720px)] min-h-[320px] overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950/50">
-            <div className="relative min-h-[560px] w-full" style={{ height: 576 }}>
-              {Array.from({ length: 24 }, (_, h) => (
-                <div
-                  key={h}
-                  className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-zinc-200/80 text-[10px] tabular-nums text-zinc-400 dark:border-zinc-700 dark:text-zinc-500"
-                  style={{ top: `${(h / 24) * 100}%` }}
-                >
-                  <span className="absolute left-1 top-0 -translate-y-1/2 bg-zinc-50 px-0.5 dark:bg-zinc-950">
-                    {hourTickLabel(h)}
-                  </span>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
+            <section className="min-w-0 flex-1 lg:max-w-none">
+              <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Day timeline</h3>
+              <div className="max-h-[min(72vh,800px)] min-h-[280px] overflow-y-auto rounded-2xl border border-zinc-200/90 bg-zinc-50/80 dark:border-zinc-600 dark:bg-zinc-950/60">
+                <div className="relative w-full" style={{ height: TIMELINE_DAY_HEIGHT_PX, minHeight: TIMELINE_DAY_HEIGHT_PX }}>
+                  {Array.from({ length: 24 }, (_, h) => (
+                    <div
+                      key={h}
+                      className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-zinc-200/70 text-[11px] tabular-nums text-zinc-400 dark:border-zinc-600/80 dark:text-zinc-500"
+                      style={{ top: `${(h / 24) * 100}%` }}
+                    >
+                      <span className="absolute left-2 top-0 w-10 -translate-y-1/2 bg-zinc-50/95 py-0.5 pl-0.5 text-right text-[11px] dark:bg-zinc-950/95">
+                        {hourTickLabel(h)}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="absolute inset-0 ml-[3.25rem] pr-1 sm:ml-14 sm:pr-2">
+                    {blocks.map(({ e, topPct, heightPct }, idx) => (
+                      <div
+                        key={`${e.id}-${idx}`}
+                        className={`absolute left-0 right-0 overflow-hidden rounded-lg border-l-[3px] px-3 py-1.5 text-left text-xs leading-snug shadow-sm ring-1 ring-black/5 dark:ring-white/10 ${sourceCls[e.source]}`}
+                        style={{
+                          top: `${topPct}%`,
+                          height: `${Math.max(heightPct, 1.1)}%`,
+                          minHeight: 28,
+                        }}
+                        title={e.title}
+                      >
+                        <span className="line-clamp-3 font-medium">{e.title}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
-              <div className="absolute inset-0 ml-11 sm:ml-12">
-                {blocks.map(({ e, topPct, heightPct }, idx) => (
-                  <div
-                    key={`${e.id}-${idx}`}
-                    className={`absolute left-0 right-1 overflow-hidden rounded border-l-4 px-2 py-1 text-[11px] leading-tight shadow-sm ${sourceCls[e.source]}`}
-                    style={{ top: `${topPct}%`, height: `${Math.max(heightPct, 1.2)}%`, minHeight: 22 }}
-                    title={e.title}
-                  >
-                    <span className="line-clamp-2 font-medium">{e.title}</span>
-                  </div>
-                ))}
               </div>
-            </div>
-          </div>
+            </section>
 
-          <h3 className="mb-2 mt-6 text-sm font-semibold tracking-tight text-zinc-800 dark:text-zinc-200">All events</h3>
-          {sorted.length === 0 ? (
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">Nothing scheduled this day.</p>
-          ) : (
-            <ul className="space-y-2">
-              {sorted.map((e, idx) => (
-                <li key={`${e.id}-list-${idx}`} className="flex gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700">
-                  <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${sourceCls[e.source]}`}>
-                    {e.source.replace(/_/g, " ")}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-medium text-zinc-900 dark:text-zinc-100">{e.title}</p>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">{formatRange(e.starts_at, e.ends_at, timeZone)}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+            <section className="min-w-0 shrink-0 lg:w-[min(100%,22rem)] xl:w-80">
+              <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">All events</h3>
+              {sorted.length === 0 ? (
+                <p className="rounded-xl border border-dashed border-zinc-200 px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-600 dark:text-zinc-400">
+                  Nothing scheduled this day.
+                </p>
+              ) : (
+                <ul className="space-y-2.5">
+                  {sorted.map((e, idx) => (
+                    <li
+                      key={`${e.id}-list-${idx}`}
+                      className="flex gap-3 rounded-xl border border-zinc-200/90 bg-white px-3.5 py-2.5 text-sm shadow-sm dark:border-zinc-600 dark:bg-zinc-900/80"
+                    >
+                      <span
+                        className={`mt-0.5 h-fit shrink-0 rounded-md px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${sourceCls[e.source]}`}
+                      >
+                        {e.source.replace(/_/g, " ")}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium leading-snug text-zinc-900 dark:text-zinc-100">{e.title}</p>
+                        <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{formatRange(e.starts_at, e.ends_at, timeZone)}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { TimePicker12h } from "@/components/TimePicker12h";
 import { formatConflictApiMessage, validateHhmmssRange, validateOrderedInstants } from "@/lib/calendarOverlap";
 import { zonedDateKey, zonedDateTimeToUtc, zonedHhMmSs } from "@/lib/timezone";
@@ -174,11 +175,17 @@ export function EventEditModal({
   }
 
   if (!open || !event || !kind) return null;
+  if (typeof document === "undefined") return null;
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="event-edit-title">
-      <button type="button" className="absolute inset-0 bg-black/40" aria-label="Close" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-4 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="event-edit-title"
+    >
+      <button type="button" className="fixed inset-0 bg-black/40" aria-label="Close" onClick={onClose} />
+      <div className="relative z-[1] my-auto w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-4 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
         <h2 id="event-edit-title" className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
           Edit event
         </h2>
@@ -247,6 +254,7 @@ export function EventEditModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

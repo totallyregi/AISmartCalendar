@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Assignment } from "@/lib/types";
 import { formatDueDateTime } from "@/lib/datetimeDisplay";
 import { AssignmentForm } from "./AssignmentForm";
@@ -39,6 +39,12 @@ export function TodoAssignmentBoard({ assignments }: { assignments: AssignmentWi
   const incomplete = sorted.filter((a) => a.status !== "done");
   const completed = sorted.filter((a) => a.status === "done");
 
+  useEffect(() => {
+    if (!editing) return;
+    const el = document.getElementById(`todo-assign-edit-${editing.id}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [editing]);
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-2 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -59,64 +65,71 @@ export function TodoAssignmentBoard({ assignments }: { assignments: AssignmentWi
         </label>
       </div>
 
-      {editing && (
-        <AssignmentForm
-          assignment={editing}
-          classId={editing.class_id}
-          onClose={() => setEditing(null)}
-          onSaved={() => window.location.reload()}
-        />
-      )}
-
       <section className="space-y-2">
         <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Incomplete assignments</h3>
         {incomplete.length === 0 && <p className="text-sm text-zinc-500 dark:text-zinc-400">No incomplete assignments.</p>}
         <ul className="space-y-2">
           {incomplete.map((a) => (
-            <li key={a.id} className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-medium text-zinc-900 dark:text-zinc-100">{a.name}</p>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {a.class_code}: {a.class_name}
-                  </p>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                    Due {formatDueDateTime(a.due_at)} · Estimated Completion Time: {a.estimated_minutes}min
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const ok = confirm("Mark this assignment as done? Future assignment events from now will be removed.");
-                      if (!ok) return;
-                      await fetch(`/api/assignments/${a.id}`, {
-                        method: "PUT",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ status: "done" }),
-                      });
-                      window.location.reload();
-                    }}
-                    className="text-sm text-emerald-600"
-                  >
-                    Mark done
-                  </button>
-                  <button type="button" onClick={() => setEditing(a)} className="text-sm text-zinc-600 dark:text-zinc-400">
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (!confirm("Delete this assignment?")) return;
-                      await fetch(`/api/assignments/${a.id}`, { method: "DELETE" });
-                      window.location.reload();
-                    }}
-                    className="text-sm text-red-600"
-                  >
-                    Delete
-                  </button>
+            <li key={a.id} className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-zinc-900 dark:text-zinc-100">{a.name}</p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      {a.class_code}: {a.class_name}
+                    </p>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                      Due {formatDueDateTime(a.due_at)} · Estimated Completion Time: {a.estimated_minutes}min
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const ok = confirm("Mark this assignment as done? Future assignment events from now will be removed.");
+                        if (!ok) return;
+                        await fetch(`/api/assignments/${a.id}`, {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ status: "done" }),
+                        });
+                        window.location.reload();
+                      }}
+                      className="text-sm text-emerald-600"
+                    >
+                      Mark done
+                    </button>
+                    <button type="button" onClick={() => setEditing(a)} className="text-sm text-zinc-600 dark:text-zinc-400">
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!confirm("Delete this assignment?")) return;
+                        await fetch(`/api/assignments/${a.id}`, { method: "DELETE" });
+                        window.location.reload();
+                      }}
+                      className="text-sm text-red-600"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
+              {editing?.id === a.id && (
+                <div
+                  id={`todo-assign-edit-${a.id}`}
+                  className="border-t border-zinc-200 bg-zinc-50/80 px-4 py-4 dark:border-zinc-700 dark:bg-zinc-950/40"
+                >
+                  <AssignmentForm
+                    assignment={a}
+                    classId={a.class_id}
+                    onClose={() => setEditing(null)}
+                    onSaved={() => window.location.reload()}
+                    className="border-0 bg-transparent p-0 shadow-none dark:bg-transparent"
+                  />
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -127,34 +140,50 @@ export function TodoAssignmentBoard({ assignments }: { assignments: AssignmentWi
         {completed.length === 0 && <p className="text-sm text-zinc-500 dark:text-zinc-400">No completed assignments yet.</p>}
         <ul className="space-y-2">
           {completed.map((a) => (
-            <li key={a.id} className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-medium text-zinc-900 dark:text-zinc-100">{a.name}</p>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {a.class_code}: {a.class_name}
-                  </p>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                    Due {formatDueDateTime(a.due_at)} · Estimated Completion Time: {a.estimated_minutes}min
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => setEditing(a)} className="text-sm text-zinc-600 dark:text-zinc-400">
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (!confirm("Delete this assignment?")) return;
-                      await fetch(`/api/assignments/${a.id}`, { method: "DELETE" });
-                      window.location.reload();
-                    }}
-                    className="text-sm text-red-600"
-                  >
-                    Delete
-                  </button>
+            <li key={a.id} className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-zinc-900 dark:text-zinc-100">{a.name}</p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      {a.class_code}: {a.class_name}
+                    </p>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                      Due {formatDueDateTime(a.due_at)} · Estimated Completion Time: {a.estimated_minutes}min
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setEditing(a)} className="text-sm text-zinc-600 dark:text-zinc-400">
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!confirm("Delete this assignment?")) return;
+                        await fetch(`/api/assignments/${a.id}`, { method: "DELETE" });
+                        window.location.reload();
+                      }}
+                      className="text-sm text-red-600"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
+              {editing?.id === a.id && (
+                <div
+                  id={`todo-assign-edit-${a.id}`}
+                  className="border-t border-zinc-200 bg-zinc-50/80 px-4 py-4 dark:border-zinc-700 dark:bg-zinc-950/40"
+                >
+                  <AssignmentForm
+                    assignment={a}
+                    classId={a.class_id}
+                    onClose={() => setEditing(null)}
+                    onSaved={() => window.location.reload()}
+                    className="border-0 bg-transparent p-0 shadow-none dark:bg-transparent"
+                  />
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -162,4 +191,3 @@ export function TodoAssignmentBoard({ assignments }: { assignments: AssignmentWi
     </div>
   );
 }
-

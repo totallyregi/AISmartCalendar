@@ -168,6 +168,9 @@ export function DashboardPlanner({
             </button>
           </div>
         </div>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          Assignment and flexible-habit suggestions are placed Monday–Saturday only (Sundays excluded).
+        </p>
         {!preferencesConfigured && (
           <p className="text-xs text-amber-600 dark:text-amber-400">
             Configure <Link href="/preferences" className="underline">Preferences</Link> (including at least one work window) before generating.

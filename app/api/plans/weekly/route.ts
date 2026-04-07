@@ -3,13 +3,13 @@ import { NextResponse } from "next/server";
 import { DEFAULT_USER_TIMEZONE } from "@/lib/datetimeDisplay";
 import { addDaysToDateKey, isValidTimeZone, weekStartSundayDateKey } from "@/lib/timezone";
 
-function buildSequentialStatus(currentWeekStart: string, generatedWeeks: string[]) {
+function buildSequentialStatus(currentWeekStart: string, generatedWeeks: string[], timeZone: string) {
   const generatedSet = new Set(generatedWeeks);
   const contiguousGeneratedWeeks: string[] = [];
   let cursor = currentWeekStart;
   while (generatedSet.has(cursor)) {
     contiguousGeneratedWeeks.push(cursor);
-    cursor = addDaysToDateKey(cursor, 7);
+    cursor = addDaysToDateKey(cursor, 7, timeZone);
   }
   return {
     nextWeekToGenerate: cursor,
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
   const generatedWeeks = Array.from(
     new Set((draftWeekRows ?? []).map((r) => String(r.week_start_date)).filter(Boolean))
   ).sort();
-  const status = buildSequentialStatus(currentWeekStart, generatedWeeks);
+  const status = buildSequentialStatus(currentWeekStart, generatedWeeks, timeZone);
 
   const { data: plan } = await supabase
     .from("weekly_plans")
@@ -80,7 +80,7 @@ export async function GET(request: Request) {
         .eq("user_id", user.id)
         .eq("applied", false)
         .eq("week_start_date", w);
-      return { weekStart: w, weekEnd: addDaysToDateKey(w, 6), draftCount: count ?? 0 };
+      return { weekStart: w, weekEnd: addDaysToDateKey(w, 6, timeZone), draftCount: count ?? 0 };
     })
   );
 

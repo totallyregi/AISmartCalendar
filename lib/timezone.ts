@@ -52,6 +52,49 @@ export function zonedDateKey(date: Date, timeZone: string) {
   return `${p.year}-${String(p.month).padStart(2, "0")}-${String(p.day).padStart(2, "0")}`;
 }
 
+/** Calendar date (YYYY-MM-DD) for an ISO instant in the user's timezone — use for grouping events on the month grid, not UTC slice(0,10). */
+export function zonedDateKeyFromIso(iso: string, timeZone: string): string {
+  return zonedDateKey(new Date(iso), timeZone);
+}
+
+const DOW_LONG_EN: Record<string, number> = {
+  Sunday: 0,
+  Monday: 1,
+  Tuesday: 2,
+  Wednesday: 3,
+  Thursday: 4,
+  Friday: 5,
+  Saturday: 6,
+};
+
+/** Day of week 0=Sun..6=Sat for civil `dateKey` interpreted in `timeZone`. */
+export function dayOfWeekFromDateKey(dateKey: string, timeZone: string): number {
+  const noon = zonedDateTimeToUtc(dateKey, "12:00:00", timeZone);
+  const long = new Intl.DateTimeFormat("en-US", { timeZone, weekday: "long" }).format(noon);
+  return DOW_LONG_EN[long] ?? 0;
+}
+
+/**
+ * Add calendar days to a YYYY-MM-DD key. When `timeZone` is set, uses civil semantics in that zone (noon anchor).
+ * Legacy 2-arg form uses UTC date arithmetic (avoid for user-facing week math).
+ */
+export function addDaysToDateKey(dateKey: string, days: number, timeZone?: string): string {
+  if (timeZone) {
+    const instant = zonedDateTimeToUtc(dateKey, "12:00:00", timeZone);
+    const shifted = new Date(instant.getTime() + days * 86400000);
+    return zonedDateKey(shifted, timeZone);
+  }
+  const base = new Date(`${dateKey}T00:00:00Z`);
+  base.setUTCDate(base.getUTCDate() + days);
+  return base.toISOString().slice(0, 10);
+}
+
+export function weekStartSundayDateKey(now: Date, timeZone: string) {
+  const todayKey = zonedDateKey(now, timeZone);
+  const dow = dayOfWeekFromDateKey(todayKey, timeZone);
+  return addDaysToDateKey(todayKey, -dow, timeZone);
+}
+
 /** Local wall-clock time in `timeZone`, snapped to `minuteStep`, as `HH:mm:00`. */
 export function zonedHhMmSs(iso: string, timeZone: string, minuteStep: 1 | 5 | 15): string {
   const p = partsInTimeZone(new Date(iso), timeZone);
@@ -61,20 +104,3 @@ export function zonedHhMmSs(iso: string, timeZone: string, minuteStep: 1 | 5 | 1
   const m = snapped % 60;
   return `${String(h24).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`;
 }
-
-export function addDaysToDateKey(dateKey: string, days: number) {
-  const base = new Date(`${dateKey}T00:00:00Z`);
-  base.setUTCDate(base.getUTCDate() + days);
-  return base.toISOString().slice(0, 10);
-}
-
-export function dayOfWeekFromDateKey(dateKey: string) {
-  return new Date(`${dateKey}T00:00:00Z`).getUTCDay();
-}
-
-export function weekStartSundayDateKey(now: Date, timeZone: string) {
-  const todayKey = zonedDateKey(now, timeZone);
-  const dow = dayOfWeekFromDateKey(todayKey);
-  return addDaysToDateKey(todayKey, -dow);
-}
-

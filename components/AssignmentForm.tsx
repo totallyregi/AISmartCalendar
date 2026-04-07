@@ -25,11 +25,14 @@ export function AssignmentForm({
   classId,
   onClose,
   onSaved,
+  className,
 }: {
   assignment?: Assignment;
   classId: string;
   onClose: () => void;
   onSaved: () => void;
+  /** Extra classes for the form (e.g. inline under a list row). */
+  className?: string;
 }) {
   const initDue = initialDueFromAssignment(assignment);
   const [name, setName] = useState(assignment?.name ?? "");
@@ -77,7 +80,10 @@ export function AssignmentForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <form
+      onSubmit={handleSubmit}
+      className={["rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900", className].filter(Boolean).join(" ")}
+    >
       <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">
         {assignment ? "Edit assignment" : "New assignment"}
       </h3>

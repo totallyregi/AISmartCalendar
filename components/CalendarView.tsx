@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { WEEKDAY_FULL } from "@/lib/datetimeDisplay";
+import { zonedDateKeyFromIso } from "@/lib/timezone";
 import type { CalendarDayMeta } from "@/lib/calendarMeta";
 import { emptyDayMeta } from "@/lib/calendarMeta";
 import { DayAgendaModal, type DayAgendaEvent } from "@/components/DayAgendaModal";
@@ -72,8 +73,8 @@ export function CalendarView({
 
   const agendaForDay = useMemo(() => {
     if (!agendaDate) return [];
-    return monthAgendaEvents.filter((e) => e.starts_at.slice(0, 10) === agendaDate);
-  }, [monthAgendaEvents, agendaDate]);
+    return monthAgendaEvents.filter((e) => zonedDateKeyFromIso(e.starts_at, timeZone) === agendaDate);
+  }, [monthAgendaEvents, agendaDate, timeZone]);
 
   function openDay(dateStr: string) {
     setAgendaDate(dateStr);

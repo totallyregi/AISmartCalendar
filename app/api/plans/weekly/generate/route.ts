@@ -7,7 +7,14 @@ import {
 } from "@/lib/scheduler/weekly";
 import { NextResponse } from "next/server";
 import { DEFAULT_USER_TIMEZONE } from "@/lib/datetimeDisplay";
-import { addDaysToDateKey, dayOfWeekFromDateKey, isValidTimeZone, weekStartSundayDateKey, zonedDateTimeToUtc } from "@/lib/timezone";
+import {
+  addDaysToDateKey,
+  dayOfWeekFromDateKey,
+  isValidTimeZone,
+  weekStartSundayDateKey,
+  zonedDateKeyFromIso,
+  zonedDateTimeToUtc,
+} from "@/lib/timezone";
 
 type Mode = "intense" | "relaxed" | "lazy";
 
@@ -19,8 +26,8 @@ function pushBusyFromRecurring(
   timeZone: string
 ) {
   for (let i = 0; i < 7; i++) {
-    const dayKey = addDaysToDateKey(weekStartDate, i);
-    const dow = dayOfWeekFromDateKey(dayKey);
+    const dayKey = addDaysToDateKey(weekStartDate, i, timeZone);
+    const dow = dayOfWeekFromDateKey(dayKey, timeZone);
 
     classRows.forEach((c) => {
       (c.class_meetings ?? []).forEach((m) => {
@@ -76,13 +83,13 @@ function modeDailyTarget(mode: Mode, minMins: number, prefMins: number, maxMins:
   return prefMins;
 }
 
-function buildSequentialStatus(currentWeekStart: string, generatedWeeks: string[]) {
+function buildSequentialStatus(currentWeekStart: string, generatedWeeks: string[], timeZone: string) {
   const generatedSet = new Set(generatedWeeks);
   const contiguousGeneratedWeeks: string[] = [];
   let cursor = currentWeekStart;
   while (generatedSet.has(cursor)) {
     contiguousGeneratedWeeks.push(cursor);
-    cursor = addDaysToDateKey(cursor, 7);
+    cursor = addDaysToDateKey(cursor, 7, timeZone);
   }
   return {
     nextWeekToGenerate: cursor,
@@ -110,7 +117,7 @@ export async function POST(request: Request) {
 
   const requestedWeekStart = typeof body.weekStart === "string" ? body.weekStart : weekStartSundayDateKey(now, timeZone);
   const weekStartDate = requestedWeekStart;
-  const weekEndDate = addDaysToDateKey(weekStartDate, 7);
+  const weekEndDate = addDaysToDateKey(weekStartDate, 7, timeZone);
   const weekStartUtc = zonedDateTimeToUtc(weekStartDate, "00:00:00", timeZone);
   const weekEndUtc = zonedDateTimeToUtc(weekEndDate, "00:00:00", timeZone);
 
@@ -129,7 +136,7 @@ export async function POST(request: Request) {
   const generatedWeeks = Array.from(
     new Set((draftWeekRows ?? []).map((r) => String(r.week_start_date)).filter(Boolean))
   ).sort();
-  const status = buildSequentialStatus(currentWeekStart, generatedWeeks);
+  const status = buildSequentialStatus(currentWeekStart, generatedWeeks, timeZone);
   if (weekStartDate !== status.nextWeekToGenerate) {
     return NextResponse.json(
       {
@@ -222,11 +229,20 @@ export async function POST(request: Request) {
   const mergedBusy = mergeIntervals(busy);
   const daySlots = new Map<string, Interval[]>();
   const dayUsed = new Map<string, Set<number>>();
+  /** AI assignment minutes placed this run only — not classes/habits/personal (those only shrink free slots via mergedBusy). */
   const dayAssignedMinutes = new Map<string, number>();
 
   for (let i = 0; i < 7; i++) {
-    const dateKey = addDaysToDateKey(weekStartDate, i);
-    const dow = dayOfWeekFromDateKey(dateKey);
+    const dateKey = addDaysToDateKey(weekStartDate, i, timeZone);
+    const dow = dayOfWeekFromDateKey(dateKey, timeZone);
+
+    // No AI drafts on Sundays (week boundary / user preference). Recurring busy still includes Sunday for slot math on other days.
+    if (dow === 0) {
+      daySlots.set(dateKey, []);
+      dayUsed.set(dateKey, new Set<number>());
+      dayAssignedMinutes.set(dateKey, 0);
+      continue;
+    }
 
     const dayWindows = windows.filter((w) => w.day_of_week === dow);
 
@@ -262,7 +278,8 @@ export async function POST(request: Request) {
     assignmentRemaining.set(a.id, Math.max(0, Number(a.remaining_minutes ?? 0) - draftAllocated));
   }
 
-  const dayOrderForward = Array.from({ length: 7 }, (_, i) => addDaysToDateKey(weekStartDate, i));
+  // Mon–Sat only (skip Sunday index 0): i = 1..6
+  const dayOrderForward = [1, 2, 3, 4, 5, 6].map((i) => addDaysToDateKey(weekStartDate, i, timeZone));
   const dayOrderBackward = [...dayOrderForward].reverse();
 
   function placeAssignmentPass(slotMap: Map<string, Interval[]>, usePreferredDayCap: boolean) {
@@ -356,6 +373,8 @@ export async function POST(request: Request) {
 
   // Assignments only inside preferred work windows (no early-morning / full-day overflow).
   placeAssignmentPass(daySlots, true);
+  // Second pass: fill toward max_daily_minutes where first pass stopped at preferred/min targets.
+  placeAssignmentPass(daySlots, false);
 
   // Flexible habits use mode-aware frequency and preferred-hour placement.
   const flexHabits = (flexHabitRes.data ?? []) as {
@@ -402,7 +421,7 @@ export async function POST(request: Request) {
     if (!rule) continue;
 
     const duration = Math.max(15, Number(rule.duration_minutes || 60));
-    const mode = rule.preference_mode === "times_per_week" ? "times_per_week" : "preferred_days";
+    const habitRuleMode = rule.preference_mode === "times_per_week" ? "times_per_week" : "preferred_days";
     const preferredDays = [
       ...new Set((rule.preferred_days ?? []).filter((d: number) => Number.isInteger(d) && d >= 0 && d <= 6)),
     ];
@@ -414,15 +433,16 @@ export async function POST(request: Request) {
 
     const dayKeyByDow = new Map<number, string>();
     for (let i = 0; i < 7; i++) {
-      const dayKey = addDaysToDateKey(weekStartDate, i);
-      dayKeyByDow.set(dayOfWeekFromDateKey(dayKey), dayKey);
+      const dayKey = addDaysToDateKey(weekStartDate, i, timeZone);
+      dayKeyByDow.set(dayOfWeekFromDateKey(dayKey, timeZone), dayKey);
     }
 
-    const candidateDows = mode === "preferred_days" ? preferredDays : [0, 1, 2, 3, 4, 5, 6];
+    const rawDows = habitRuleMode === "preferred_days" ? preferredDays : [0, 1, 2, 3, 4, 5, 6];
+    const candidateDows = rawDows.filter((d) => d !== 0);
     if (candidateDows.length === 0) continue;
 
     const targetSessions =
-      mode === "times_per_week" ? Math.max(1, Number(rule.times_per_week ?? 1)) : candidateDows.length;
+      habitRuleMode === "times_per_week" ? Math.max(1, Number(rule.times_per_week ?? 1)) : candidateDows.length;
     const base = Math.floor(targetSessions / candidateDows.length);
     const remainder = targetSessions % candidateDows.length;
     const sessionsByDow = new Map<number, number>();
@@ -494,6 +514,13 @@ export async function POST(request: Request) {
     }
   }
 
+  // Safety: drafts must fall in [weekStartDate, weekEndDate) in user TZ and not on excluded Sundays.
+  const mergedBlocksFiltered = mergedBlocks.filter((b) => {
+    const sk = zonedDateKeyFromIso(b.starts_at, timeZone);
+    if (sk < weekStartDate || sk >= weekEndDate) return false;
+    return dayOfWeekFromDateKey(sk, timeZone) !== 0;
+  });
+
   const { data: plan, error: planErr } = await supabase
     .from("weekly_plans")
     .upsert({ user_id: user.id, week_start_date: weekStartDate, status: "generated" }, { onConflict: "user_id,week_start_date" })
@@ -503,14 +530,14 @@ export async function POST(request: Request) {
   if (planErr || !plan) return NextResponse.json({ error: planErr?.message ?? "Failed to save weekly plan" }, { status: 500 });
 
   await supabase.from("ai_draft_blocks").delete().eq("user_id", user.id).eq("week_start_date", weekStartDate);
-  if (mergedBlocks.length) {
+  if (mergedBlocksFiltered.length) {
     const { error: draftErr } = await supabase.from("ai_draft_blocks").insert(
-      mergedBlocks.map((b) => ({ user_id: user.id, week_start_date: weekStartDate, ...b, editable: true, applied: false }))
+      mergedBlocksFiltered.map((b) => ({ user_id: user.id, week_start_date: weekStartDate, ...b, editable: true, applied: false }))
     );
     if (draftErr) return NextResponse.json({ error: draftErr.message }, { status: 500 });
   }
 
-  const assignmentMinutes = mergedBlocks
+  const assignmentMinutes = mergedBlocksFiltered
     .filter((b) => b.block_type === "assignment")
     .reduce((sum, b) => sum + minutesBetween(new Date(b.starts_at), new Date(b.ends_at)), 0);
 
@@ -538,7 +565,7 @@ export async function POST(request: Request) {
     ok: true,
     weekStart: weekStartDate,
     mode,
-    blocks: mergedBlocks.length,
+    blocks: mergedBlocksFiltered.length,
     assignmentMinutes,
     perDay: Object.fromEntries(dayAssignedMinutes),
     unscheduled,
