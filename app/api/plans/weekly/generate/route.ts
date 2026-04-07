@@ -231,7 +231,8 @@ export async function POST(request: Request) {
     const dayWindows = windows.filter((w) => w.day_of_week === dow);
 
     const allowed = dayWindows.length ? buildAllowedSlotsForDay(dateKey, dayWindows, timeZone) : [];
-    const free = removeBusy(allowed, mergedBusy).filter((slot) => slot.end > now);
+    // Require full slot to be in the future: slot.end > now allowed 5:30–5:45 when now is 5:34 (invalid).
+    const free = removeBusy(allowed, mergedBusy).filter((slot) => slot.start >= now);
     daySlots.set(dateKey, free);
     dayUsed.set(dateKey, new Set<number>());
     dayAssignedMinutes.set(dateKey, 0);
@@ -304,6 +305,7 @@ export async function POST(request: Request) {
 
           for (let i = 0; i < slots.length; i++) {
             if (isUsed(used, slots[i])) continue;
+            if (slots[i].start < now) continue;
             if (slots[i].start >= due) continue;
 
             const contiguous = contiguousCount(slots, i);
@@ -438,7 +440,7 @@ export async function POST(request: Request) {
       const daySpecificWindows = slotsByDow.get(dow) ?? [];
       const slots =
         daySpecificWindows.length > 0
-          ? removeBusy(buildAllowedSlotsForDay(dayKey, daySpecificWindows, timeZone), mergedBusy).filter((slot) => slot.end > now)
+          ? removeBusy(buildAllowedSlotsForDay(dayKey, daySpecificWindows, timeZone), mergedBusy).filter((slot) => slot.start >= now)
           : daySlots.get(dayKey) ?? [];
       const used = dayUsed.get(dayKey) ?? new Set<number>();
       let placed = 0;

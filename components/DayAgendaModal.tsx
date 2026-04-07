@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
+import { zonedDateTimeToUtc } from "@/lib/timezone";
 
 export type DayAgendaEvent = {
   id: string;
@@ -56,6 +57,25 @@ function formatRange(isoStart: string, isoEnd: string, timeZone: string) {
   return `${new Date(isoStart).toLocaleTimeString("en-US", o)} – ${new Date(isoEnd).toLocaleTimeString("en-US", o)}`;
 }
 
+/** Compact hour tick: 12a, 1a–11a, 12p, 1p–11p */
+function hourTickLabel(h: number) {
+  if (h === 0) return "12a";
+  if (h < 12) return `${h}a`;
+  if (h === 12) return "12p";
+  return `${h - 12}p`;
+}
+
+function formatDayTitle(dateKey: string, timeZone: string) {
+  const noon = zonedDateTimeToUtc(dateKey, "12:00:00", timeZone);
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(noon);
+}
+
 export function DayAgendaModal({
   open,
   date,
@@ -88,6 +108,8 @@ export function DayAgendaModal({
     [events, timeZone]
   );
 
+  const dayTitle = useMemo(() => formatDayTitle(date, timeZone), [date, timeZone]);
+
   const blocks = useMemo(() => {
     return sorted.map((e) => {
       const startMin = localMinutes(e.starts_at, timeZone);
@@ -110,8 +132,8 @@ export function DayAgendaModal({
       <button type="button" className="absolute inset-0 bg-black/40" aria-label="Close" onClick={onClose} />
       <div className="relative flex max-h-[min(92vh,860px)] w-full max-w-lg flex-col rounded-t-2xl border border-zinc-200 bg-white shadow-xl dark:border-zinc-700 dark:bg-zinc-900 sm:rounded-2xl">
         <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-700">
-          <h2 id="day-agenda-title" className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
-            {date}
+          <h2 id="day-agenda-title" className="text-base font-semibold leading-snug text-zinc-900 dark:text-zinc-100">
+            {dayTitle}
           </h2>
           <button
             type="button"
@@ -123,38 +145,37 @@ export function DayAgendaModal({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-          <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">Times in {timeZone}</p>
+          <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">Times in {timeZone}</p>
 
-          <div className="relative h-[min(360px,50vh)] w-full overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950/50">
-            {[
-              { h: 0, label: "12 AM" },
-              { h: 6, label: "6 AM" },
-              { h: 12, label: "12 PM" },
-              { h: 18, label: "6 PM" },
-            ].map(({ h, label }) => (
-              <div
-                key={h}
-                className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-zinc-200/80 text-[10px] text-zinc-400 dark:border-zinc-700 dark:text-zinc-500"
-                style={{ top: `${(h / 24) * 100}%` }}
-              >
-                <span className="absolute left-1 top-0 -translate-y-1/2 bg-zinc-50 px-0.5 dark:bg-zinc-950">{label}</span>
-              </div>
-            ))}
-            <div className="absolute inset-0 ml-12">
-              {blocks.map(({ e, topPct, heightPct }, idx) => (
+          <div className="max-h-[min(70vh,720px)] min-h-[320px] overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950/50">
+            <div className="relative min-h-[560px] w-full" style={{ height: 576 }}>
+              {Array.from({ length: 24 }, (_, h) => (
                 <div
-                  key={`${e.id}-${idx}`}
-                  className={`absolute left-0 right-1 overflow-hidden rounded border-l-4 px-2 py-1 text-[11px] leading-tight shadow-sm ${sourceCls[e.source]}`}
-                  style={{ top: `${topPct}%`, height: `${Math.max(heightPct, 1.2)}%`, minHeight: 22 }}
-                  title={e.title}
+                  key={h}
+                  className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-zinc-200/80 text-[10px] tabular-nums text-zinc-400 dark:border-zinc-700 dark:text-zinc-500"
+                  style={{ top: `${(h / 24) * 100}%` }}
                 >
-                  <span className="line-clamp-2 font-medium">{e.title}</span>
+                  <span className="absolute left-1 top-0 -translate-y-1/2 bg-zinc-50 px-0.5 dark:bg-zinc-950">
+                    {hourTickLabel(h)}
+                  </span>
                 </div>
               ))}
+              <div className="absolute inset-0 ml-11 sm:ml-12">
+                {blocks.map(({ e, topPct, heightPct }, idx) => (
+                  <div
+                    key={`${e.id}-${idx}`}
+                    className={`absolute left-0 right-1 overflow-hidden rounded border-l-4 px-2 py-1 text-[11px] leading-tight shadow-sm ${sourceCls[e.source]}`}
+                    style={{ top: `${topPct}%`, height: `${Math.max(heightPct, 1.2)}%`, minHeight: 22 }}
+                    title={e.title}
+                  >
+                    <span className="line-clamp-2 font-medium">{e.title}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
-          <h3 className="mb-2 mt-5 text-sm font-semibold text-zinc-800 dark:text-zinc-200">All events</h3>
+          <h3 className="mb-2 mt-6 text-sm font-semibold tracking-tight text-zinc-800 dark:text-zinc-200">All events</h3>
           {sorted.length === 0 ? (
             <p className="text-sm text-zinc-500 dark:text-zinc-400">Nothing scheduled this day.</p>
           ) : (

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { TimePicker12h } from "@/components/TimePicker12h";
+import { formatConflictApiMessage, validateHhmmssRange, validateOrderedInstants } from "@/lib/calendarOverlap";
 import { zonedDateKey, zonedDateTimeToUtc, zonedHhMmSs } from "@/lib/timezone";
 
 export type EventEditKind = "generated" | "personal" | "weekly_applied" | "external" | "class_override" | "fixed_habit";
@@ -79,6 +80,22 @@ export function EventEditModal({
       const starts_at = zonedDateTimeToUtc(editDate, startTime, timeZone).toISOString();
       const ends_at = zonedDateTimeToUtc(editDate, endTime, timeZone).toISOString();
 
+      if (kind === "fixed_habit" || kind === "class_override") {
+        const rangeErr = validateHhmmssRange(startTime, endTime);
+        if (rangeErr) {
+          setError(rangeErr);
+          setLoading(false);
+          return;
+        }
+      } else {
+        const orderErr = validateOrderedInstants(starts_at, ends_at);
+        if (orderErr) {
+          setError(orderErr);
+          setLoading(false);
+          return;
+        }
+      }
+
       if (kind === "generated") {
         const res = await fetch(`/api/ai-draft-blocks/${event.id}`, {
           method: "PATCH",
@@ -97,7 +114,7 @@ export function EventEditModal({
         });
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          throw new Error(data.error ?? "Failed to update event");
+          throw new Error(formatConflictApiMessage(data));
         }
       } else if (kind === "weekly_applied") {
         const res = await fetch(`/api/weekly-plan-blocks/${event.id}`, {

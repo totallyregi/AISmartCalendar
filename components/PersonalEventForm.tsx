@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { TimePicker12h } from "@/components/TimePicker12h";
+import { formatConflictApiMessage, validateOrderedInstants } from "@/lib/calendarOverlap";
 import { localDateTimeToIsoUtc } from "@/lib/time12h";
 
 export function PersonalEventForm({ defaultDate }: { defaultDate: string }) {
@@ -11,20 +12,31 @@ export function PersonalEventForm({ defaultDate }: { defaultDate: string }) {
   const [startTime, setStartTime] = useState("12:00:00");
   const [endTime, setEndTime] = useState("13:00:00");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    setError(null);
+    const starts_at = localDateTimeToIsoUtc(date, startTime);
+    const ends_at = localDateTimeToIsoUtc(date, endTime);
+    const orderErr = validateOrderedInstants(starts_at, ends_at);
+    if (orderErr) {
+      setError(orderErr);
+      return;
+    }
+
     setLoading(true);
-    await fetch("/api/user-events", {
+    const res = await fetch("/api/user-events", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title,
-        starts_at: localDateTimeToIsoUtc(date, startTime),
-        ends_at: localDateTimeToIsoUtc(date, endTime),
-      }),
+      body: JSON.stringify({ title, starts_at, ends_at }),
     });
+    const data = await res.json().catch(() => ({}));
     setLoading(false);
+    if (!res.ok) {
+      setError(formatConflictApiMessage(data));
+      return;
+    }
     window.location.reload();
   }
 
@@ -36,6 +48,7 @@ export function PersonalEventForm({ defaultDate }: { defaultDate: string }) {
           setDate(defaultDate);
           setStartTime("12:00:00");
           setEndTime("13:00:00");
+          setError(null);
           setOpen(true);
         }}
         className="rounded bg-zinc-900 px-3 py-2 text-sm text-white dark:bg-zinc-100 dark:text-zinc-900"
@@ -47,6 +60,7 @@ export function PersonalEventForm({ defaultDate }: { defaultDate: string }) {
 
   return (
     <form onSubmit={submit} className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      {error && <p className="mb-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="sm:col-span-2 lg:col-span-1">
           <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Title</label>

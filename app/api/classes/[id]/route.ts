@@ -1,3 +1,4 @@
+import { validateHhmmssRange } from "@/lib/calendarOverlap";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
@@ -55,6 +56,10 @@ export async function PUT(
 
   await supabase.from("class_meetings").delete().eq("class_id", id);
   if (meetings.length) {
+    for (const m of meetings) {
+      const err = validateHhmmssRange(m.start_time, m.end_time);
+      if (err) return NextResponse.json({ error: err }, { status: 400 });
+    }
     const rows = meetings.map((m) => ({
       class_id: id,
       day_of_week: m.day_of_week,

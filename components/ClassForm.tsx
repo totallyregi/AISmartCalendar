@@ -45,6 +45,12 @@ export function ClassForm({
         setLoading(false);
         return;
       }
+      const orderBad = meetings.some((m) => m.start_time >= m.end_time);
+      if (orderBad) {
+        setError("End time must be after start time for each meeting slot.");
+        setLoading(false);
+        return;
+      }
     }
 
     const url = item ? `/api/classes/${item.id}` : "/api/classes";

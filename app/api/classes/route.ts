@@ -1,3 +1,4 @@
+import { validateHhmmssRange } from "@/lib/calendarOverlap";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
@@ -45,6 +46,10 @@ export async function POST(request: Request) {
   if (clsErr || !cls) return NextResponse.json({ error: clsErr?.message ?? "Failed" }, { status: 500 });
 
   if (meetings.length) {
+    for (const m of meetings) {
+      const err = validateHhmmssRange(m.start_time, m.end_time);
+      if (err) return NextResponse.json({ error: err }, { status: 400 });
+    }
     const meetingRows = meetings.map((m) => ({
       class_id: cls.id,
       day_of_week: m.day_of_week,
