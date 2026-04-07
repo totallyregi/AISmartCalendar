@@ -31,9 +31,12 @@ function sortAssignments(items: AssignmentWithClass[], sortBy: SortKey) {
   }
 }
 
+type TodoTab = "incomplete" | "completed";
+
 export function TodoAssignmentBoard({ assignments }: { assignments: AssignmentWithClass[] }) {
   const [editing, setEditing] = useState<AssignmentWithClass | null>(null);
   const [sortBy, setSortBy] = useState<SortKey>("due_asc");
+  const [tab, setTab] = useState<TodoTab>("incomplete");
 
   const sorted = useMemo(() => sortAssignments(assignments, sortBy), [assignments, sortBy]);
   const incomplete = sorted.filter((a) => a.status !== "done");
@@ -65,7 +68,51 @@ export function TodoAssignmentBoard({ assignments }: { assignments: AssignmentWi
         </label>
       </div>
 
-      <section className="space-y-2">
+      <div
+        className="flex gap-1 rounded-lg border border-zinc-200 bg-zinc-100/80 p-1 dark:border-zinc-700 dark:bg-zinc-900/80"
+        role="tablist"
+        aria-label="Assignment status"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "incomplete"}
+          id="todo-tab-incomplete"
+          onClick={() => {
+            setTab("incomplete");
+            setEditing(null);
+          }}
+          className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+            tab === "incomplete"
+              ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100"
+              : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+          }`}
+        >
+          Incomplete
+          <span className="ml-1.5 tabular-nums text-zinc-500 dark:text-zinc-400">({incomplete.length})</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "completed"}
+          id="todo-tab-completed"
+          onClick={() => {
+            setTab("completed");
+            setEditing(null);
+          }}
+          className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+            tab === "completed"
+              ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100"
+              : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+          }`}
+        >
+          Completed
+          <span className="ml-1.5 tabular-nums text-zinc-500 dark:text-zinc-400">({completed.length})</span>
+        </button>
+      </div>
+
+      {tab === "incomplete" && (
+      <section className="space-y-2" role="tabpanel" aria-labelledby="todo-tab-incomplete">
         <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Incomplete assignments</h3>
         {incomplete.length === 0 && <p className="text-sm text-zinc-500 dark:text-zinc-400">No incomplete assignments.</p>}
         <ul className="space-y-2">
@@ -134,8 +181,10 @@ export function TodoAssignmentBoard({ assignments }: { assignments: AssignmentWi
           ))}
         </ul>
       </section>
+      )}
 
-      <section className="space-y-2">
+      {tab === "completed" && (
+      <section className="space-y-2" role="tabpanel" aria-labelledby="todo-tab-completed">
         <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Completed assignments</h3>
         {completed.length === 0 && <p className="text-sm text-zinc-500 dark:text-zinc-400">No completed assignments yet.</p>}
         <ul className="space-y-2">
@@ -188,6 +237,7 @@ export function TodoAssignmentBoard({ assignments }: { assignments: AssignmentWi
           ))}
         </ul>
       </section>
+      )}
     </div>
   );
 }

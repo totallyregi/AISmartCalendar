@@ -6,6 +6,8 @@ import type { Assignment } from "@/lib/types";
 import { formatDueDateTime } from "@/lib/datetimeDisplay";
 import { AssignmentForm } from "./AssignmentForm";
 
+type AssignmentTab = "incomplete" | "completed";
+
 export function AssignmentList({
   classId,
   assignments,
@@ -15,6 +17,7 @@ export function AssignmentList({
 }) {
   const [editing, setEditing] = useState<Assignment | null>(null);
   const [adding, setAdding] = useState(false);
+  const [tab, setTab] = useState<AssignmentTab>("incomplete");
 
   useEffect(() => {
     if (!editing) return;
@@ -62,7 +65,51 @@ export function AssignmentList({
 
       {addModal}
 
-      <section className="space-y-2">
+      <div
+        className="flex gap-1 rounded-lg border border-zinc-200 bg-zinc-100/80 p-1 dark:border-zinc-700 dark:bg-zinc-900/80"
+        role="tablist"
+        aria-label="Assignment status"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "incomplete"}
+          id={`class-assign-tab-incomplete-${classId}`}
+          onClick={() => {
+            setTab("incomplete");
+            setEditing(null);
+          }}
+          className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+            tab === "incomplete"
+              ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100"
+              : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+          }`}
+        >
+          Incomplete
+          <span className="ml-1.5 tabular-nums text-zinc-500 dark:text-zinc-400">({incomplete.length})</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "completed"}
+          id={`class-assign-tab-completed-${classId}`}
+          onClick={() => {
+            setTab("completed");
+            setEditing(null);
+          }}
+          className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+            tab === "completed"
+              ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100"
+              : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+          }`}
+        >
+          Completed
+          <span className="ml-1.5 tabular-nums text-zinc-500 dark:text-zinc-400">({completed.length})</span>
+        </button>
+      </div>
+
+      {tab === "incomplete" && (
+      <section className="space-y-2" role="tabpanel" aria-labelledby={`class-assign-tab-incomplete-${classId}`}>
         <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Incomplete assignments</h3>
         {incomplete.length === 0 && <p className="text-sm text-zinc-500 dark:text-zinc-400">No incomplete assignments.</p>}
         <ul className="space-y-2">
@@ -135,8 +182,10 @@ export function AssignmentList({
           ))}
         </ul>
       </section>
+      )}
 
-      <section className="space-y-2">
+      {tab === "completed" && (
+      <section className="space-y-2" role="tabpanel" aria-labelledby={`class-assign-tab-completed-${classId}`}>
         <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Completed assignments</h3>
         {completed.length === 0 && <p className="text-sm text-zinc-500 dark:text-zinc-400">No completed assignments yet.</p>}
         <ul className="space-y-2">
@@ -193,6 +242,7 @@ export function AssignmentList({
           ))}
         </ul>
       </section>
+      )}
     </div>
   );
 }

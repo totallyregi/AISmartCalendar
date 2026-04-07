@@ -63,6 +63,7 @@ export default function PreferencesPage() {
   const [newDay, setNewDay] = useState<number | "">("");
   const [newStart, setNewStart] = useState("09:00:00");
   const [newEnd, setNewEnd] = useState("17:00:00");
+  const [showAddWindowForm, setShowAddWindowForm] = useState(false);
 
   async function loadData() {
     const res = await fetch("/api/preferences/scheduler");
@@ -135,6 +136,7 @@ export default function PreferencesPage() {
     setMessage("Window added");
     setNewStart("09:00:00");
     setNewEnd("17:00:00");
+    setShowAddWindowForm(false);
   }
 
   async function removeWindow(id: string) {
@@ -227,7 +229,7 @@ export default function PreferencesPage() {
           </div>
         </div>
 
-        <div className="mt-4">
+        <div className="mt-4 flex justify-end">
           <button type="button" onClick={savePreference} disabled={loading} className="rounded bg-zinc-900 px-4 py-2 text-sm text-white disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900">
             Save preferences
           </button>
@@ -235,32 +237,58 @@ export default function PreferencesPage() {
       </div>
 
       <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Preferred work windows</h2>
-        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Add your available work windows for each day.</p>
-
-        <div className="mt-3 grid gap-2 sm:grid-cols-4">
-          <select value={newDay === "" ? "" : String(newDay)} onChange={(e) => setNewDay(e.target.value === "" ? "" : Number(e.target.value))} className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">
-            <option value="" disabled>
-              Day
-            </option>
-            {WEEKDAY_FULL.map((d, idx) => (
-              <option key={d} value={idx}>
-                {d}
-              </option>
-            ))}
-          </select>
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-zinc-500 dark:text-zinc-400">Start</span>
-            <TimePicker12h idPrefix="pref-win-s" minuteStep={15} value={newStart} onChange={setNewStart} />
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Preferred work windows</h2>
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Add your available work windows for each day.</p>
           </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-zinc-500 dark:text-zinc-400">End</span>
-            <TimePicker12h idPrefix="pref-win-e" minuteStep={15} value={newEnd} onChange={setNewEnd} />
-          </div>
-          <button type="button" onClick={addWindow} disabled={loading} className="rounded bg-zinc-900 px-3 py-2 text-sm text-white disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900">
-            Add window
-          </button>
+          {!showAddWindowForm && (
+            <button
+              type="button"
+              onClick={() => setShowAddWindowForm(true)}
+              className="shrink-0 rounded border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-800 dark:border-zinc-600 dark:text-zinc-200"
+            >
+              Add work window
+            </button>
+          )}
         </div>
+
+        {showAddWindowForm && (
+          <div className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-950/40">
+            <div className="grid gap-2 sm:grid-cols-4">
+              <select value={newDay === "" ? "" : String(newDay)} onChange={(e) => setNewDay(e.target.value === "" ? "" : Number(e.target.value))} className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">
+                <option value="" disabled>
+                  Day
+                </option>
+                {WEEKDAY_FULL.map((d, idx) => (
+                  <option key={d} value={idx}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">Start</span>
+                <TimePicker12h idPrefix="pref-win-s" minuteStep={15} value={newStart} onChange={setNewStart} />
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">End</span>
+                <TimePicker12h idPrefix="pref-win-e" minuteStep={15} value={newEnd} onChange={setNewEnd} />
+              </div>
+              <div className="flex flex-col justify-end gap-2 sm:flex-row sm:items-end">
+                <button type="button" onClick={addWindow} disabled={loading} className="rounded bg-zinc-900 px-3 py-2 text-sm text-white disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900">
+                  Add window
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddWindowForm(false)}
+                  className="rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="mt-4 space-y-3">
           {WEEKDAY_FULL.map((d, idx) => {
