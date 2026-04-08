@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { REDIRECT_HELP_FIRST_LOGIN_KEY, shouldRedirectToHelpFirstLogin } from "@/lib/firstLoginHelp";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -41,12 +42,26 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const goHelp = shouldRedirectToHelpFirstLogin(user);
+      let destinationUrl = targetUrl;
+      if (goHelp) {
+        await supabase.auth.updateUser({
+          data: { [REDIRECT_HELP_FIRST_LOGIN_KEY]: false },
+        });
+        destinationUrl = `${origin}/help`;
+      }
       const successTitle = type === "signup" ? "Sign up successful" : "Welcome back";
       const successMessage =
-        type === "signup"
-          ? "Your account is confirmed. You can continue to your calendar."
-          : "You’re signed in. Redirecting you to your main calendar…";
-      return htmlPage(successTitle, successMessage, targetUrl, "Go to Calendar");
+        goHelp
+          ? "Opening the getting-started guide…"
+          : type === "signup"
+            ? "Your account is confirmed. You can continue to your calendar."
+            : "You’re signed in. Redirecting you to your main calendar…";
+      const buttonText = goHelp ? "Open Help" : "Go to Calendar";
+      return htmlPage(successTitle, successMessage, destinationUrl, buttonText);
     }
   }
   return htmlPage(

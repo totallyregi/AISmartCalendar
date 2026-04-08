@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { REDIRECT_HELP_FIRST_LOGIN_KEY } from "@/lib/firstLoginHelp";
 
 function LoginForm() {
   const [email, setEmail] = useState("");
@@ -31,7 +32,18 @@ function LoginForm() {
       setError(err.message);
       return;
     }
-    router.push(next);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const meta = user?.user_metadata as Record<string, unknown> | undefined;
+    if (meta?.[REDIRECT_HELP_FIRST_LOGIN_KEY] === true) {
+      await supabase.auth.updateUser({
+        data: { [REDIRECT_HELP_FIRST_LOGIN_KEY]: false },
+      });
+      router.push("/help");
+    } else {
+      router.push(next);
+    }
     router.refresh();
   }
 

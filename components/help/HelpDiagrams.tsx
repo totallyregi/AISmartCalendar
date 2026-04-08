@@ -117,17 +117,29 @@ export function CalendarVsAiIllustration() {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <figure className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
-        <svg viewBox="0 0 200 120" className="h-auto w-full" role="img" aria-labelledby="cal-title">
+        <svg viewBox="0 0 200 128" className="h-auto w-full" role="img" aria-labelledby="cal-title">
           <title id="cal-title">Main calendar — committed schedule</title>
           <text x="100" y="22" textAnchor="middle" className="fill-zinc-900 text-[12px] font-semibold dark:fill-zinc-100" fontFamily="ui-sans-serif, system-ui, sans-serif">
             Calendar
           </text>
-          <rect x="16" y="36" width="168" height="72" rx="6" className="fill-zinc-50 stroke-zinc-200 dark:fill-zinc-950 dark:stroke-zinc-700" strokeWidth="1" />
+          <rect x="16" y="36" width="168" height="80" rx="6" className="fill-zinc-50 stroke-zinc-200 dark:fill-zinc-950 dark:stroke-zinc-700" strokeWidth="1" />
           <rect x="24" y="48" width="52" height="16" rx="3" className="fill-sky-200/90 dark:fill-sky-800/80" />
           <rect x="84" y="48" width="48" height="16" rx="3" className="fill-violet-200/90 dark:fill-violet-800/80" />
           <rect x="24" y="72" width="90" height="16" rx="3" className="fill-amber-200/90 dark:fill-amber-800/80" />
-          <text x="100" y="112" textAnchor="middle" className="fill-zinc-500 text-[9px] dark:fill-zinc-400" fontFamily="ui-sans-serif, system-ui, sans-serif">
-            Classes, habits, applied work, personal events
+          <text
+            x="100"
+            y="100"
+            textAnchor="middle"
+            className="fill-zinc-500 dark:fill-zinc-400"
+            fontFamily="ui-sans-serif, system-ui, sans-serif"
+            fontSize="8"
+          >
+            <tspan x="100" dy="0">
+              Classes · habits · applied work
+            </tspan>
+            <tspan x="100" dy="11">
+              Personal &amp; imported events
+            </tspan>
           </text>
         </svg>
         <figcaption className="mt-2 text-xs text-zinc-600 dark:text-zinc-300">

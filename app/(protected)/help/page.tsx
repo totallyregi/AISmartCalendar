@@ -6,6 +6,7 @@ import {
   ClassAssignmentsTabsIllustration,
   SidebarIllustration,
 } from "@/components/help/HelpDiagrams";
+import { HelpFirstVisitClear } from "@/components/HelpFirstVisitClear";
 
 const linkCls =
   "font-medium text-emerald-700 underline decoration-emerald-600/40 underline-offset-2 hover:text-emerald-800 hover:decoration-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300";
@@ -30,6 +31,7 @@ function Section({
 export default function HelpPage() {
   return (
     <div className="space-y-10 animate-in">
+      <HelpFirstVisitClear />
       <div>
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">How to use AISmartCalendar</h1>
         <p className="mt-2 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400">

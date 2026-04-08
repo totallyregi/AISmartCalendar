@@ -26,6 +26,7 @@ export default function SignupPage() {
       options: {
         data: {
           display_name: displayName || undefined,
+          redirect_help_first_login: true,
         },
       },
     });

@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { shouldRedirectToHelpFirstLogin } from "@/lib/firstLoginHelp";
 import { updateSession } from "@/lib/supabase/middleware";
 
 const protectedPaths = [
@@ -27,7 +28,7 @@ export async function middleware(request: NextRequest) {
   }
   if ((pathname === "/login" || pathname === "/signup") && user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = shouldRedirectToHelpFirstLogin(user) ? "/help" : "/dashboard";
     return NextResponse.redirect(url);
   }
   return response;
