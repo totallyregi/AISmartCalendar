@@ -9,6 +9,16 @@ export const WEEKDAY_FULL = [
   "Saturday",
 ] as const;
 
+export const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+
+export type DayTimeSlot = { day_of_week: number; start_time: string; end_time: string };
+
+/** Calendar order: Sunday → Saturday, then start time. */
+export function compareDayTimeSlots(a: DayTimeSlot, b: DayTimeSlot): number {
+  if (a.day_of_week !== b.day_of_week) return a.day_of_week - b.day_of_week;
+  return a.start_time.localeCompare(b.start_time);
+}
+
 /**
  * Default IANA zone for new preferences and scheduler defaults.
  * US Central Time — covers New Orleans, Chicago, and other Central cities.
@@ -30,6 +40,12 @@ export function formatTimeHhmmssTo12h(hhmmss: string): string {
 export function formatClassMeetingLine(dayOfWeek: number, start: string, end: string): string {
   const day = WEEKDAY_FULL[dayOfWeek] ?? "";
   return `${day} ${formatTimeHhmmssTo12h(start)} – ${formatTimeHhmmssTo12h(end)}`;
+}
+
+/** Tighter line for sidebars, e.g. `Tue 9:30 AM–10:45 AM`. */
+export function formatClassMeetingLineCompact(dayOfWeek: number, start: string, end: string): string {
+  const day = WEEKDAY_SHORT[dayOfWeek] ?? "";
+  return `${day} ${formatTimeHhmmssTo12h(start)}–${formatTimeHhmmssTo12h(end)}`;
 }
 
 /** Due date/time for assignments: full weekday, long month, 12-hour clock. */

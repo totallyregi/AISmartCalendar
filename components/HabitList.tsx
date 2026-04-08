@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { WEEKDAY_FULL, formatClassMeetingLine } from "@/lib/datetimeDisplay";
+import { WEEKDAY_FULL, compareDayTimeSlots } from "@/lib/datetimeDisplay";
 import { HabitForm } from "./HabitForm";
+import { ScheduleSlotList } from "./ScheduleSlotList";
 
 type HabitRow = {
   id: string;
@@ -26,32 +27,63 @@ type HabitRow = {
       }[];
 };
 
+function FlexibleHabitMeta({ h, flex }: { h: HabitRow; flex: Record<string, unknown> | null | undefined }) {
+  const mode = (flex?.preference_mode ?? "preferred_days") as "preferred_days" | "times_per_week";
+  const prefDays = (flex?.preferred_days as number[] | undefined)?.filter((d) => d >= 0 && d <= 6) ?? [];
+  const sortedDays = [...prefDays].sort((a, b) => a - b);
+  const slots = h.habit_flexible_preferred_slots ?? [];
+
+  return (
+    <div className="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+      <p>
+        <span className="font-medium text-zinc-800 dark:text-zinc-200">{Number(flex?.duration_minutes ?? 0)} min</span>
+        {mode === "times_per_week" ? (
+          <span className="text-zinc-500 dark:text-zinc-400"> · {Number(flex?.times_per_week ?? 0)}× per week</span>
+        ) : null}
+      </p>
+      {mode === "preferred_days" && sortedDays.length > 0 ? (
+        <div className="flex flex-wrap gap-1">
+          {sortedDays.map((d) => (
+            <span
+              key={d}
+              className="rounded-md border border-zinc-200 bg-white px-2 py-0.5 text-xs font-medium text-zinc-700 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-300"
+            >
+              {WEEKDAY_FULL[d]}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      {slots.length > 0 ? (
+        <div>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Preferred windows</p>
+          <ScheduleSlotList slots={slots} dense />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function HabitListItem({ h, onEdit }: { h: HabitRow; onEdit: () => void }) {
   const flexRules = h.habit_flexible_rules as unknown;
   const flex = Array.isArray(flexRules) ? flexRules[0] : flexRules;
-  const slotSummary =
-    h.habit_flexible_preferred_slots?.length
-      ? ` · hours: ${h.habit_flexible_preferred_slots
-          .map((s) => formatClassMeetingLine(s.day_of_week, s.start_time, s.end_time))
-          .join(", ")}`
-      : "";
-  const flexSummary =
-    (flex?.preference_mode ?? "preferred_days") === "times_per_week"
-      ? `${flex?.duration_minutes ?? 0} min · ${flex?.times_per_week ?? 0}x/week${slotSummary}`
-      : `${flex?.duration_minutes ?? 0} min` +
-        `${flex?.preferred_days?.length ? ` · days: ${flex.preferred_days.map((d: number) => WEEKDAY_FULL[d]).join(", ")}` : ""}` +
-        `${slotSummary}`;
+  const fixedSlots = [...(h.habit_fixed_slots ?? [])].sort(compareDayTimeSlots);
 
   return (
     <li className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <div className="min-w-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="min-w-0 flex-1">
           <p className="font-medium text-zinc-900 dark:text-zinc-100">{h.name}</p>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            {h.type === "fixed"
-              ? (h.habit_fixed_slots ?? []).map((s) => formatClassMeetingLine(s.day_of_week, s.start_time, s.end_time)).join(" · ") || "No fixed slots"
-              : flexSummary}
-          </p>
+          {h.type === "fixed" ? (
+            fixedSlots.length > 0 ? (
+              <ScheduleSlotList slots={fixedSlots} />
+            ) : (
+              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">No fixed slots</p>
+            )
+          ) : (
+            <div className="mt-2">
+              <FlexibleHabitMeta h={h} flex={flex as Record<string, unknown> | undefined} />
+            </div>
+          )}
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
           <button

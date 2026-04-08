@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { AssignmentList } from "@/components/AssignmentList";
 import type { Assignment } from "@/lib/types";
-import { formatClassMeetingLine } from "@/lib/datetimeDisplay";
+import { ScheduleSlotList } from "@/components/ScheduleSlotList";
 
 export default async function ClassDetailPage({
   params,
@@ -33,11 +33,7 @@ export default async function ClassDetailPage({
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
           {cls.class_code} — {cls.class_name}
         </h1>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          {(cls.class_meetings ?? [])
-            .map((m) => formatClassMeetingLine(m.day_of_week, m.start_time, m.end_time))
-            .join(" · ") || "No recurring meetings"}
-        </p>
+        <ScheduleSlotList slots={cls.class_meetings ?? []} emptyLabel="No recurring meetings" />
       </div>
 
       <section>
