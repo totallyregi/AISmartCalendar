@@ -43,6 +43,9 @@ npm install
 
 - Create project and run `supabase/schema.sql` in SQL editor.
 - Ensure auth works for your local/prod domains.
+- Set **Authentication → URL Configuration**: **Site URL** to your live app origin (e.g. `https://your-app.vercel.app`), not only `http://localhost:3000`.
+- Under **Redirect URLs**, allow `https://your-app.vercel.app/auth/callback` and `http://localhost:3000/auth/callback`.
+- Set `NEXT_PUBLIC_SITE_URL` in production to that same origin (no trailing slash) so sign-up confirmation emails use the correct host instead of localhost.
 
 3. Google OAuth (Google Calendar)
 

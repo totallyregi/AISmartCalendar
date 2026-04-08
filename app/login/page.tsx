@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { REDIRECT_HELP_FIRST_LOGIN_KEY } from "@/lib/firstLoginHelp";
+import { publicSiteUrlFromWindow } from "@/lib/siteUrl";
 
 function LoginForm() {
   const [email, setEmail] = useState("");
@@ -66,7 +67,7 @@ function LoginForm() {
     }
 
     const supabase = createClient();
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const siteUrl = publicSiteUrlFromWindow();
     const { error: resetErr } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${siteUrl}/login`,
     });
