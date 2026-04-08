@@ -30,24 +30,28 @@ export function AppTutorialModal() {
   const [step, setStep] = useState(0);
 
   useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const supabase = createClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (cancelled || !user) return;
-        const meta = user.user_metadata as Record<string, unknown> | undefined;
-        if (meta?.[META_PENDING_KEY] === true) {
-          queueMicrotask(() => setOpen(true));
-        }
-      } catch {
-        /* session unavailable */
+    const supabase = createClient();
+
+    function maybeOpenFromUser(user: { user_metadata?: Record<string, unknown> } | null) {
+      const meta = user?.user_metadata as Record<string, unknown> | undefined;
+      if (meta?.[META_PENDING_KEY] === true) {
+        setStep(0);
+        setOpen(true);
       }
-    })();
+    }
+
+    void supabase.auth.getUser().then(({ data: { user } }) => {
+      maybeOpenFromUser(user);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      maybeOpenFromUser(session?.user ?? null);
+    });
+
     return () => {
-      cancelled = true;
+      subscription.unsubscribe();
     };
   }, []);
 

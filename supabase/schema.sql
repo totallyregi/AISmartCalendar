@@ -313,9 +313,19 @@ begin
   insert into public.profiles (id, display_name)
   values (new.id, new.raw_user_meta_data->>'display_name')
   on conflict (id) do nothing;
+
+  -- In-app signup sets this in user_metadata; dashboard-created users often omit it.
+  -- Merge default true so the first-login tutorial still runs (see AppTutorialModal).
+  if not (coalesce(new.raw_user_meta_data, '{}'::jsonb) ? 'pending_first_login_tutorial') then
+    update auth.users
+    set raw_user_meta_data = coalesce(new.raw_user_meta_data, '{}'::jsonb)
+      || jsonb_build_object('pending_first_login_tutorial', true)
+    where id = new.id;
+  end if;
+
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
