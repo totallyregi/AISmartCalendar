@@ -168,10 +168,14 @@ export function Sidebar({
 
       <div className="border-t border-zinc-200 p-3 dark:border-zinc-800">
         <Link
-          href="/privacy"
-          className="block rounded-lg px-3 py-2 text-xs text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300"
+          href="/help"
+          className={`${baseLinkCls} ${
+            pathname === "/help"
+              ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+              : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+          }`}
         >
-          Privacy
+          Help
         </Link>
       </div>
       </aside>

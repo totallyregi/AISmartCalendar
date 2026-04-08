@@ -26,8 +26,6 @@ export default function SignupPage() {
       options: {
         data: {
           display_name: displayName || undefined,
-          // Shown once after first login; cleared in AppTutorialModal (not localStorage).
-          pending_first_login_tutorial: true,
         },
       },
     });

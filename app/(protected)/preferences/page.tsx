@@ -64,7 +64,6 @@ export default function PreferencesPage() {
   const [newStart, setNewStart] = useState("09:00:00");
   const [newEnd, setNewEnd] = useState("17:00:00");
   const [showAddWindowForm, setShowAddWindowForm] = useState(false);
-  const [tutorialLoading, setTutorialLoading] = useState(false);
 
   async function loadData() {
     const res = await fetch("/api/preferences/scheduler");
@@ -157,44 +156,11 @@ export default function PreferencesPage() {
     setMessage("Window removed");
   }
 
-  async function showAppTutorialAgain() {
-    setTutorialLoading(true);
-    setMessage(null);
-    setError(null);
-    try {
-      const { error: err } = await createClient().auth.updateUser({
-        data: { pending_first_login_tutorial: true },
-      });
-      if (err) {
-        setError(err.message);
-        return;
-      }
-      setMessage("If the tutorial does not appear, refresh the page.");
-    } finally {
-      setTutorialLoading(false);
-    }
-  }
-
   return (
     <div className="space-y-6 animate-in">
       <div>
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Preferences</h1>
         <p className="text-sm text-zinc-500 dark:text-zinc-400">Customize how AI distributes assignment work when generating suggestions.</p>
-      </div>
-
-      <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">App tour</h2>
-        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-          Users created in the Supabase dashboard do not get the same signup metadata as in-app signups. Use this to open the first-login tutorial anytime.
-        </p>
-        <button
-          type="button"
-          onClick={() => void showAppTutorialAgain()}
-          disabled={tutorialLoading}
-          className="mt-3 rounded border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-60 dark:border-zinc-600 dark:text-zinc-200"
-        >
-          {tutorialLoading ? "Opening…" : "Show app tutorial"}
-        </button>
       </div>
 
       <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">

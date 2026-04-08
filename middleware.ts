@@ -8,6 +8,7 @@ const protectedPaths = [
   "/assignments",
   "/habits",
   "/preferences",
+  "/help",
 ];
 
 function isProtected(pathname: string) {
