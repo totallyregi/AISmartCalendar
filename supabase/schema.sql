@@ -1,4 +1,4 @@
--- AISmartCalendar v2 schema
+-- Rhythm schema (web app)
 -- Run this in Supabase SQL editor.
 
 create extension if not exists "pgcrypto";

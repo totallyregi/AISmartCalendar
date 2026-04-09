@@ -7,7 +7,7 @@ export default function PrivacyPage() {
         Privacy
       </h1>
       <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-        AISmartCalendar is a student prototype. We do not sell or share your data.
+        Rhythm is a student prototype. We do not sell or share your data.
       </p>
       <div className="mt-6 space-y-4 text-sm text-zinc-700 dark:text-zinc-300">
         <p>

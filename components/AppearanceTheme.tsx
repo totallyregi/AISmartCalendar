@@ -39,7 +39,7 @@ export function AppearanceTheme() {
     <div className="ds-card p-4 sm:p-5">
       <h2 className="text-sm font-medium text-palette-navy">Appearance</h2>
       <p className="mt-1 text-xs text-palette-slate">
-        Choose a light or dark look for AISmartCalendar. This applies on this device only.
+        Choose a light or dark look for Rhythm. This applies on this device only.
       </p>
       <div
         className="mt-4 flex gap-1 rounded-card border border-palette-card-border bg-palette-muted-panel/80 p-1"

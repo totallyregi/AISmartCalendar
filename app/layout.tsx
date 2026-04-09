@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AISmartCalendar",
-  description: "Calendar-aware AI productivity for college students",
+  title: "Rhythm",
+  description: "Calendar-aware planning and AI scheduling for college students",
 };
 
 export default function RootLayout({

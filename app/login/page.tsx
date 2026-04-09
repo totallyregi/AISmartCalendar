@@ -98,7 +98,7 @@ function LoginForm() {
           Sign in
         </h1>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          AISmartCalendar — your calendar-aware productivity assistant
+          Rhythm — your calendar-aware productivity assistant
         </p>
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           {error && (

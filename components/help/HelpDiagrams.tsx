@@ -10,7 +10,7 @@ export function SidebarIllustration() {
         <title>Sidebar with main navigation links</title>
         <rect x="8" y="8" width="264" height="304" rx="12" fill="currentColor" className="text-white dark:text-zinc-900" stroke="currentColor" strokeWidth="1" />
         <text x="24" y="36" className="fill-zinc-900 text-[13px] font-semibold dark:fill-zinc-100" fontFamily="ui-sans-serif, system-ui, sans-serif">
-          AISmartCalendar
+          Rhythm
         </text>
         <rect x="16" y="52" width="248" height="28" rx="6" className="fill-zinc-900 dark:fill-zinc-100" />
         <text x="28" y="70" className="fill-white text-[11px] font-medium dark:fill-zinc-900" fontFamily="ui-sans-serif, system-ui, sans-serif">

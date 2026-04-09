@@ -1,4 +1,4 @@
-# AISmartCalendar - New User Guide
+# Rhythm — New User Guide
 
 This guide explains how to use the web application from start to finish as a new user, including all main features and the recommended workflow.
 
@@ -6,7 +6,7 @@ This guide explains how to use the web application from start to finish as a new
 
 ## 1) What This App Does
 
-AISmartCalendar helps you plan your week by combining:
+Rhythm helps you plan your week by combining:
 
 - Your fixed commitments (classes, fixed habits, personal events, imported calendar events)
 - Your flexible work (assignments and flexible habits)

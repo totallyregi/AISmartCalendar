@@ -1,4 +1,4 @@
-# AISmartCalendar v2
+# Rhythm
 
 Class-centric planner with Google Calendar sync, fixed/flexible habits, and deterministic weekly schedule generation.
 

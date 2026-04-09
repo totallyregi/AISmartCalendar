@@ -33,7 +33,7 @@ export default function HelpPage() {
     <div className="space-y-10 animate-in">
       <HelpFirstVisitClear />
       <div>
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">How to use AISmartCalendar</h1>
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">How to use Rhythm</h1>
         <p className="mt-2 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400">
           This guide walks through each area of the app, what it is for, and how the pieces fit together. Use the links to jump straight into a screen while you read.
         </p>
@@ -70,7 +70,7 @@ export default function HelpPage() {
 
       <Section id="intro" title="What this app does">
         <p>
-          AISmartCalendar combines your fixed commitments (classes, fixed habits, personal and imported events) with flexible work (assignments and flexible habits). You can generate{" "}
+          Rhythm combines your fixed commitments (classes, fixed habits, personal and imported events) with flexible work (assignments and flexible habits). You can generate{" "}
           <strong className="font-medium text-zinc-800 dark:text-zinc-200">AI scheduling suggestions</strong> in a separate workspace, review them, then apply only what you want to your main calendar.
         </p>
       </Section>

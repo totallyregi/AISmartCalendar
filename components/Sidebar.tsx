@@ -61,7 +61,7 @@ export function Sidebar({
         </button>
         <div className="flex h-14 shrink-0 items-center border-b border-white/10 px-4">
           <Link href="/dashboard" className="font-medium text-white transition-opacity hover:opacity-90">
-            AISmartCalendar
+            Rhythm
           </Link>
         </div>
 
