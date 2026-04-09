@@ -82,39 +82,39 @@ export function AssignmentForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className={["rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900", className].filter(Boolean).join(" ")}
+      className={["ds-card p-4", className].filter(Boolean).join(" ")}
     >
-      <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">
+      <h3 className="font-medium text-palette-navy">
         {assignment ? "Edit assignment" : "New assignment"}
       </h3>
-      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Class is locked to this class tab.</p>
+      <p className="mt-1 text-xs text-palette-slate">Class is locked to this class tab.</p>
 
-      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Assignment name</label>
+          <label className="block text-sm font-medium text-palette-navy">Assignment name</label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Midterm revision"
             required
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800"
+            className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Due date</label>
+          <label className="block text-sm font-medium text-palette-navy">Due date</label>
           <input
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
             required
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800"
+            className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Due time</label>
+          <label className="block text-sm font-medium text-palette-navy">Due time</label>
           <div className="mt-1">
             <TimePicker12h idPrefix="asg-due" minuteStep={5} value={dueTime} onChange={setDueTime} />
           </div>
@@ -122,11 +122,11 @@ export function AssignmentForm({
 
         {assignment && (
           <div>
-            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Status</label>
+            <label className="block text-sm font-medium text-palette-navy">Status</label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as Assignment["status"])}
-              className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800"
+              className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy"
             >
               {statuses.map((s) => (
                 <option key={s} value={s}>
@@ -138,22 +138,22 @@ export function AssignmentForm({
         )}
 
         <div>
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Estimated hours</label>
+          <label className="block text-sm font-medium text-palette-navy">Estimated hours</label>
           <input
             type="number"
             min={0}
             value={estHours}
             onChange={(e) => setEstHours(Number(e.target.value))}
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800"
+            className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Estimated minutes</label>
+          <label className="block text-sm font-medium text-palette-navy">Estimated minutes</label>
           <select
             value={estMins}
             onChange={(e) => setEstMins(Number(e.target.value))}
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800"
+            className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy"
           >
             {[0, 15, 30, 45].map((m) => (
               <option key={m} value={m}>
@@ -168,14 +168,14 @@ export function AssignmentForm({
         <button
           type="submit"
           disabled={loading}
-          className="rounded bg-zinc-900 px-4 py-2 text-sm text-white dark:bg-zinc-100 dark:text-zinc-900"
+          className="rounded-lg bg-palette-sky px-4 py-2 text-sm font-medium text-palette-ink disabled:opacity-60"
         >
           {loading ? "Saving..." : assignment ? "Update" : "Add assignment"}
         </button>
         <button
           type="button"
           onClick={onClose}
-          className="rounded border border-zinc-300 px-4 py-2 text-sm dark:border-zinc-600"
+          className="rounded-lg border border-palette-card-border bg-palette-card-bg px-4 py-2 text-sm text-palette-navy hover:bg-palette-hover"
         >
           Cancel
         </button>

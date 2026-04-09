@@ -18,7 +18,7 @@ export function ClassList({ classes }: { classes: ClassSection[] }) {
           setAdding(true);
           setEditing(null);
         }}
-        className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
+        className="rounded-lg bg-palette-sky px-4 py-2 text-sm font-medium text-palette-ink"
       >
         Add class
       </button>
@@ -36,16 +36,16 @@ export function ClassList({ classes }: { classes: ClassSection[] }) {
 
       <ul className="space-y-2">
         {classes.map((c) => (
-          <li key={c.id} className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <li key={c.id} className="ds-card p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <Link href={`/classes/${c.id}`} className="font-medium text-zinc-900 underline-offset-2 hover:underline dark:text-zinc-100">
+                <Link href={`/classes/${c.id}`} className="font-medium text-palette-navy underline-offset-2 hover:underline">
                   {c.class_code} — {c.class_name}
                 </Link>
                 <ScheduleSlotList slots={c.class_meetings} emptyLabel="No meeting slots" />
               </div>
               <div className="flex gap-2">
-                <button type="button" onClick={() => { setEditing(c); setAdding(false); }} className="text-sm text-zinc-600 dark:text-zinc-400">
+                <button type="button" onClick={() => { setEditing(c); setAdding(false); }} className="text-sm text-palette-slate hover:text-palette-navy">
                   Edit
                 </button>
                 <button

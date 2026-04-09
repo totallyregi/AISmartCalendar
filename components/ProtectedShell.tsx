@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { SignOutButton } from "@/components/SignOutButton";
 import { ChangePasswordModal } from "@/components/ChangePasswordModal";
 import { AutoTimezoneBootstrap } from "@/components/AutoTimezoneBootstrap";
+
 export function ProtectedShell({
   email,
   children,
@@ -36,11 +37,11 @@ export function ProtectedShell({
   }, [profileMenuOpen]);
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="min-h-screen bg-palette-cream text-palette-navy">
       <AutoTimezoneBootstrap />
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((v) => !v)} />
       <div className={`transition-[padding] duration-200 ${sidebarCollapsed ? "pl-0" : "lg:pl-64"}`}>
-        <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-zinc-200 bg-white/80 px-4 backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/80 sm:px-6">
+        <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-palette-card-border bg-palette-card-bg/95 px-4 shadow-[0_1px_0_rgba(27,42,74,0.06)] backdrop-blur-sm sm:px-6 dark:shadow-[0_1px_0_rgba(0,0,0,0.35)]">
           <div />
           <div className="flex items-center gap-4">
             {email && (
@@ -48,7 +49,7 @@ export function ProtectedShell({
                 <button
                   type="button"
                   onClick={() => setProfileMenuOpen((v) => !v)}
-                  className="inline-flex max-w-[12rem] items-center gap-2 truncate text-left text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                  className="inline-flex max-w-[12rem] items-center gap-2 truncate text-left text-sm text-palette-navy/90 transition-colors hover:text-palette-navy font-medium"
                   aria-haspopup="menu"
                   aria-expanded={profileMenuOpen}
                   aria-label="User menu"
@@ -64,7 +65,7 @@ export function ProtectedShell({
                   <div
                     role="menu"
                     aria-label="User menu"
-                    className="absolute right-0 mt-2 w-44 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+                    className="absolute right-0 mt-2 w-44 overflow-hidden rounded-card border-[0.5px] border-palette-card-border bg-palette-card-bg shadow-sm"
                   >
                     <button
                       type="button"
@@ -73,7 +74,7 @@ export function ProtectedShell({
                         setProfileMenuOpen(false);
                         setChangePasswordOpen(true);
                       }}
-                      className="block w-full px-3 py-2 text-left text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                      className="block w-full px-3 py-2 text-left text-sm text-palette-slate hover:bg-palette-hover"
                     >
                       Change password
                     </button>

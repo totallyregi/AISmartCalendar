@@ -17,20 +17,20 @@ export function ScheduleSlotList({ slots, emptyLabel, dense }: Props) {
   if (!list.length) {
     if (!emptyLabel) return null;
     return (
-      <p className={`text-zinc-500 dark:text-zinc-400 ${dense ? "text-xs" : "text-sm"}`}>{emptyLabel}</p>
+      <p className={`text-palette-slate ${dense ? "text-xs" : "text-sm"}`}>{emptyLabel}</p>
     );
   }
 
   const ulCls = dense ? "mt-1 space-y-1" : "mt-2 space-y-1.5";
   const liCls = dense
-    ? "flex flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-md bg-zinc-50/90 px-2 py-1 dark:bg-zinc-800/40"
-    : "flex flex-wrap items-baseline gap-x-3 gap-y-0.5 rounded-lg bg-zinc-50 px-2.5 py-1.5 dark:bg-zinc-800/50";
+    ? "flex flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-lg border border-palette-card-border bg-palette-card-bg px-2 py-1.5"
+    : "flex flex-wrap items-baseline gap-x-3 gap-y-0.5 rounded-lg border border-palette-card-border bg-palette-cream/30 px-2.5 py-1.5";
   const dayCls = dense
-    ? "min-w-[5.25rem] text-xs font-medium text-zinc-700 dark:text-zinc-300"
-    : "min-w-[6.25rem] text-sm font-medium text-zinc-800 dark:text-zinc-200";
+    ? "min-w-[5.25rem] text-xs font-medium text-palette-navy"
+    : "min-w-[6.25rem] text-sm font-medium text-palette-navy";
   const timeCls = dense
-    ? "text-xs tabular-nums text-zinc-500 dark:text-zinc-400"
-    : "text-sm tabular-nums text-zinc-600 dark:text-zinc-400";
+    ? "text-xs tabular-nums text-palette-slate"
+    : "text-sm tabular-nums text-palette-slate";
 
   return (
     <ul className={ulCls}>

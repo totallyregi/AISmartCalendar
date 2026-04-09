@@ -54,33 +54,33 @@ export function CalendarConnectionCard() {
   }
 
   return (
-    <div className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="ds-card space-y-3 p-4">
       <div>
-        <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Google Calendar Connection</h2>
-        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Connect and sync external calendar events into your main Calendar.</p>
+        <h2 className="text-sm font-medium text-palette-navy">Google Calendar Connection</h2>
+        <p className="mt-1 text-xs text-palette-slate">Connect and sync external calendar events into your main Calendar.</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {!connected ? (
-          <button type="button" onClick={connectGoogle} className="rounded bg-zinc-900 px-3 py-2 text-sm text-white dark:bg-zinc-100 dark:text-zinc-900">
+          <button type="button" onClick={connectGoogle} className="rounded-lg bg-palette-sky px-3 py-2 text-sm font-medium text-palette-ink">
             Connect Google Calendar
           </button>
         ) : (
-          <button type="button" disabled className="cursor-default rounded bg-emerald-600 px-3 py-2 text-sm text-white">
+          <button type="button" disabled className="cursor-default rounded-lg bg-palette-green px-3 py-2 text-sm font-medium text-white">
             Google Calendar Connected
           </button>
         )}
-        <button type="button" onClick={syncGoogle} disabled={loading || !connected} className="rounded border border-zinc-300 px-3 py-2 text-sm disabled:opacity-50 dark:border-zinc-600">
+        <button type="button" onClick={syncGoogle} disabled={loading || !connected} className="rounded-lg border-[0.5px] border-palette-card-border px-3 py-2 text-sm text-palette-navy hover:bg-palette-hover disabled:opacity-50">
           Sync now
         </button>
         {connected && (
-          <button type="button" onClick={disconnectGoogle} disabled={loading} className="rounded border border-red-300 px-3 py-2 text-sm text-red-600 dark:border-red-700 dark:text-red-400">
+          <button type="button" onClick={disconnectGoogle} disabled={loading} className="rounded-lg border border-red-300 px-3 py-2 text-sm text-red-600">
             Disconnect
           </button>
         )}
-        {email && <span className="text-xs text-zinc-500 dark:text-zinc-400">{email}</span>}
+        {email && <span className="text-xs text-palette-slate">{email}</span>}
       </div>
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-      {message && <p className="text-sm text-emerald-700 dark:text-emerald-400">{message}</p>}
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      {message && <p className="text-sm font-medium text-palette-navy">{message}</p>}
     </div>
   );
 }

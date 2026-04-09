@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { CalendarLegend } from "@/components/CalendarLegend";
 import { CalendarView } from "@/components/CalendarView";
 import { WeekTimeline } from "@/components/WeekTimeline";
-import { PersonalEventForm } from "@/components/PersonalEventForm";
+import { AddEventForm } from "@/components/AddEventForm";
 import { CalendarConnectionCard } from "@/components/CalendarConnectionCard";
 import { DEFAULT_USER_TIMEZONE } from "@/lib/datetimeDisplay";
 import type { CalendarDayMeta } from "@/lib/calendarMeta";
@@ -75,7 +75,7 @@ export default async function CalendarPage({
       .lte("starts_at", endIso),
     supabase
       .from("user_events")
-      .select("id,starts_at,ends_at,title")
+      .select("id,starts_at,ends_at,title,assignment_id,habit_id")
       .eq("user_id", user?.id)
       .gte("starts_at", startIso)
       .lte("starts_at", endIso),
@@ -175,14 +175,35 @@ export default async function CalendarPage({
 
   (userEventRes.data ?? []).forEach((e) => {
     const d = zonedDateKeyFromIso(e.starts_at as string, timeZone);
-    ensure(d).personal += 1;
-    dayEvents.push({
-      id: e.id as string,
-      starts_at: e.starts_at as string,
-      ends_at: e.ends_at as string,
-      title: e.title as string,
-      source: "personal",
-    });
+    const row = e as { assignment_id?: string | null; habit_id?: string | null };
+    if (row.assignment_id) {
+      ensure(d).assignments += 1;
+      dayEvents.push({
+        id: e.id as string,
+        starts_at: e.starts_at as string,
+        ends_at: e.ends_at as string,
+        title: e.title as string,
+        source: "assignment",
+      });
+    } else if (row.habit_id) {
+      ensure(d).flexibleHabits += 1;
+      dayEvents.push({
+        id: e.id as string,
+        starts_at: e.starts_at as string,
+        ends_at: e.ends_at as string,
+        title: e.title as string,
+        source: "flexible_habit",
+      });
+    } else {
+      ensure(d).personal += 1;
+      dayEvents.push({
+        id: e.id as string,
+        starts_at: e.starts_at as string,
+        ends_at: e.ends_at as string,
+        title: e.title as string,
+        source: "personal",
+      });
+    }
   });
 
   const selectedEvents = dayEvents
@@ -201,18 +222,18 @@ export default async function CalendarPage({
   return (
     <div className="space-y-6 animate-in">
       <div>
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Calendar</h1>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">Your fixed calendar (imported events, classes, habits, personal events, and applied AI changes).</p>
+        <h1 className="text-2xl font-medium text-palette-navy">Calendar</h1>
+        <p className="text-sm text-palette-slate">Your fixed calendar (imported events, classes, habits, personal events, and applied AI changes).</p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">Imported events</p>
-          <p className="mt-1 text-xl font-semibold text-zinc-800 dark:text-zinc-200">{extRes.count ?? 0}</p>
+        <div className="ds-card p-4">
+          <p className="text-xs font-medium text-palette-slate">Imported events</p>
+          <p className="mt-1 text-xl font-medium text-palette-navy">{extRes.count ?? 0}</p>
         </div>
-        <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">Classes</p>
-          <p className="mt-1 text-xl font-semibold text-zinc-800 dark:text-zinc-200">{classRes.count ?? 0}</p>
+        <div className="ds-card p-4">
+          <p className="text-xs font-medium text-palette-slate">Classes</p>
+          <p className="mt-1 text-xl font-medium text-palette-navy">{classRes.count ?? 0}</p>
         </div>
       </div>
 
@@ -220,7 +241,7 @@ export default async function CalendarPage({
 
       <div className="flex items-center justify-between gap-3">
         <CalendarLegend variant="main" />
-        <PersonalEventForm defaultDate={selectedDate} />
+        <AddEventForm defaultDate={selectedDate} />
       </div>
       <CalendarView
         year={year}

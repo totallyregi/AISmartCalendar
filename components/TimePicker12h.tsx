@@ -33,7 +33,7 @@ export function TimePicker12h({
         id={`${idPrefix}-h`}
         value={hour12}
         onChange={(e) => setParts({ hour12: Number(e.target.value) })}
-        className="rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+        className="rounded-lg border-[0.5px] border-palette-card-border bg-palette-card-bg px-2 py-1.5 text-sm text-palette-navy"
         aria-label="Hour"
       >
         {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((h) => (
@@ -42,12 +42,12 @@ export function TimePicker12h({
           </option>
         ))}
       </select>
-      <span className="text-zinc-500">:</span>
+      <span className="text-palette-slate">:</span>
       <select
         id={`${idPrefix}-m`}
         value={minutes.includes(minute) ? minute : minutes[0]}
         onChange={(e) => setParts({ minute: Number(e.target.value) })}
-        className="rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+        className="rounded-lg border-[0.5px] border-palette-card-border bg-palette-card-bg px-2 py-1.5 text-sm text-palette-navy"
         aria-label="Minute"
       >
         {minutes.map((m) => (
@@ -60,7 +60,7 @@ export function TimePicker12h({
         id={`${idPrefix}-ap`}
         value={isPm ? "PM" : "AM"}
         onChange={(e) => setParts({ isPm: e.target.value === "PM" })}
-        className="rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+        className="rounded-lg border-[0.5px] border-palette-card-border bg-palette-card-bg px-2 py-1.5 text-sm text-palette-navy"
         aria-label="AM or PM"
       >
         <option value="AM">AM</option>

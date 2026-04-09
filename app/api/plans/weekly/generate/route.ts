@@ -1,5 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import {
+  buildAllowedGenerateWeeks,
+  buildSequentialStatus,
+  fetchSequencingWeekStarts,
+  isAllowedGenerateWeek,
+} from "@/lib/planner/weekGenerationStatus";
+import {
   mergeIntervals,
   minutesBetween,
   removeBusy,
@@ -83,21 +89,6 @@ function modeDailyTarget(mode: Mode, minMins: number, prefMins: number, maxMins:
   return prefMins;
 }
 
-function buildSequentialStatus(currentWeekStart: string, generatedWeeks: string[], timeZone: string) {
-  const generatedSet = new Set(generatedWeeks);
-  const contiguousGeneratedWeeks: string[] = [];
-  let cursor = currentWeekStart;
-  while (generatedSet.has(cursor)) {
-    contiguousGeneratedWeeks.push(cursor);
-    cursor = addDaysToDateKey(cursor, 7, timeZone);
-  }
-  return {
-    nextWeekToGenerate: cursor,
-    contiguousGeneratedWeeks,
-    hasDraftChain: contiguousGeneratedWeeks.length > 0,
-  };
-}
-
 export async function POST(request: Request) {
   const supabase = await createClient();
   const {
@@ -126,23 +117,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Cannot generate past weeks" }, { status: 400 });
   }
 
-  const { data: draftWeekRows } = await supabase
-    .from("ai_draft_blocks")
-    .select("week_start_date")
-    .eq("user_id", user.id)
-    .eq("applied", false)
-    .gte("week_start_date", currentWeekStart);
-
-  const generatedWeeks = Array.from(
-    new Set((draftWeekRows ?? []).map((r) => String(r.week_start_date)).filter(Boolean))
-  ).sort();
-  const status = buildSequentialStatus(currentWeekStart, generatedWeeks, timeZone);
-  if (weekStartDate !== status.nextWeekToGenerate) {
+  const distinctWeeks = await fetchSequencingWeekStarts(supabase, user.id, currentWeekStart);
+  const seqStatus = buildSequentialStatus(currentWeekStart, distinctWeeks, timeZone);
+  if (!isAllowedGenerateWeek(weekStartDate, currentWeekStart, seqStatus.nextWeekToGenerate, timeZone)) {
+    if (!seqStatus.hasDraftChain && weekStartDate !== currentWeekStart) {
+      return NextResponse.json(
+        { error: `First generation must start at current week ${currentWeekStart}.` },
+        { status: 400 }
+      );
+    }
+    const allowed = buildAllowedGenerateWeeks(currentWeekStart, seqStatus.nextWeekToGenerate, timeZone).join(", ");
     return NextResponse.json(
       {
-        error: status.hasDraftChain
-          ? `Generate sequentially only. Next week is ${status.nextWeekToGenerate}. Reset suggestions to regenerate earlier weeks.`
-          : `First generation must start at current week ${currentWeekStart}.`,
+        error: `Choose a week from your planner list (allowed: ${allowed}). Reset suggestions if you need to clear pending drafts.`,
       },
       { status: 400 }
     );
@@ -159,12 +146,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: deleteStaleDraftsErr.message }, { status: 500 });
   }
 
-  // Drop existing drafts for this week so regeneration does not subtract same-week minutes; stale past-week rows are excluded from prior sum below.
+  // Drop unapplied drafts for this week only; keep applied rows so sequencing still counts the week as generated.
   const { error: deleteWeekDraftsErr } = await supabase
     .from("ai_draft_blocks")
     .delete()
     .eq("user_id", user.id)
-    .eq("week_start_date", weekStartDate);
+    .eq("week_start_date", weekStartDate)
+    .eq("applied", false);
   if (deleteWeekDraftsErr) {
     return NextResponse.json({ error: deleteWeekDraftsErr.message }, { status: 500 });
   }
@@ -178,7 +166,7 @@ export async function POST(request: Request) {
       .eq("origin", "applied")
       .gte("starts_at", weekStartUtc.toISOString())
       .lt("starts_at", weekEndUtc.toISOString()),
-    supabase.from("user_events").select("starts_at,ends_at").eq("user_id", user.id).gte("starts_at", weekStartUtc.toISOString()).lt("starts_at", weekEndUtc.toISOString()),
+    supabase.from("user_events").select("starts_at,ends_at,habit_id").eq("user_id", user.id).gte("starts_at", weekStartUtc.toISOString()).lt("starts_at", weekEndUtc.toISOString()),
     supabase.from("class_sections").select("class_meetings(day_of_week,start_time,end_time)").eq("user_id", user.id),
     supabase.from("habits").select("id,name,habit_fixed_slots(day_of_week,start_time,end_time)").eq("user_id", user.id).eq("type", "fixed").eq("active", true),
     supabase
@@ -404,6 +392,10 @@ export async function POST(request: Request) {
       .filter((b) => b.block_type === "habit_flexible" && b.habit_id)
       .map((b) => String(b.habit_id))
   );
+  for (const ue of userEventRes.data ?? []) {
+    const row = ue as { habit_id?: string | null };
+    if (row.habit_id) flexAlreadyApplied.add(String(row.habit_id));
+  }
 
   for (const h of flexHabits) {
     if (flexAlreadyApplied.has(String(h.id))) continue;
@@ -529,7 +521,12 @@ export async function POST(request: Request) {
 
   if (planErr || !plan) return NextResponse.json({ error: planErr?.message ?? "Failed to save weekly plan" }, { status: 500 });
 
-  await supabase.from("ai_draft_blocks").delete().eq("user_id", user.id).eq("week_start_date", weekStartDate);
+  await supabase
+    .from("ai_draft_blocks")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("week_start_date", weekStartDate)
+    .eq("applied", false);
   if (mergedBlocksFiltered.length) {
     const { error: draftErr } = await supabase.from("ai_draft_blocks").insert(
       mergedBlocksFiltered.map((b) => ({ user_id: user.id, week_start_date: weekStartDate, ...b, editable: true, applied: false }))

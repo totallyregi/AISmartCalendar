@@ -38,6 +38,15 @@ export async function POST() {
         .eq("weekly_plan_id", plan.id)
         .eq("user_id", user.id)
         .eq("origin", "applied");
+
+      const { count: appliedDraftCount } = await supabase
+        .from("ai_draft_blocks")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("week_start_date", weekStart)
+        .eq("applied", true);
+
+      if ((appliedDraftCount ?? 0) > 0) continue;
       if ((appliedCount ?? 0) === 0) {
         await supabase.from("weekly_plans").delete().eq("id", plan.id).eq("user_id", user.id);
       }

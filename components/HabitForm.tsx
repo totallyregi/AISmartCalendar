@@ -182,18 +182,18 @@ export function HabitForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">{habit ? "Edit habit" : "New habit"}</h3>
+    <form onSubmit={handleSubmit} className="ds-card p-4">
+      <h3 className="font-medium text-palette-navy">{habit ? "Edit habit" : "New habit"}</h3>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium">Habit name</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} required className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800" />
+          <label className="block text-sm font-medium text-palette-navy">Habit name</label>
+          <input value={name} onChange={(e) => setName(e.target.value)} required className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy" />
         </div>
         <div>
-          <label className="block text-sm font-medium">Type</label>
-          <select value={type} onChange={(e) => setType(e.target.value as "" | "fixed" | "flexible")} required className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">
+          <label className="block text-sm font-medium text-palette-navy">Type</label>
+          <select value={type} onChange={(e) => setType(e.target.value as "" | "fixed" | "flexible")} required className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy">
             <option value="" disabled>
               Select type
             </option>
@@ -205,14 +205,14 @@ export function HabitForm({
 
       {type === "fixed" ? (
         <div className="mt-4 space-y-3">
-          <p className="text-sm font-medium">Fixed schedule</p>
+          <p className="text-sm font-medium text-palette-navy">Fixed schedule</p>
           {fixedSlots.map((s, i) => (
             <div
               key={i}
-              className="flex flex-wrap items-end gap-2 rounded-lg border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-800/50"
+              className="flex flex-wrap items-end gap-2 rounded-lg border border-palette-card-border bg-palette-cream/40 p-3"
             >
               <div className="min-w-[9.5rem] flex-1">
-                <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Day</label>
+                <label className="mb-1 block text-xs font-medium text-palette-slate">Day</label>
                 <select
                   value={s.day_of_week < 0 ? "" : String(s.day_of_week)}
                   onChange={(e) => {
@@ -222,7 +222,7 @@ export function HabitForm({
                     );
                   }}
                   required
-                  className="w-full rounded-md border border-zinc-300 px-2 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                  className="w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-2 py-2 text-sm text-palette-navy"
                 >
                   <option value="" disabled>
                     Day
@@ -235,7 +235,7 @@ export function HabitForm({
                 </select>
               </div>
               <div className="min-w-[10rem] flex-1">
-                <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Start</label>
+                <label className="mb-1 block text-xs font-medium text-palette-slate">Start</label>
                 <TimePicker12h
                   idPrefix={`habit-fixed-${i}-s`}
                   minuteStep={15}
@@ -246,7 +246,7 @@ export function HabitForm({
                 />
               </div>
               <div className="min-w-[10rem] flex-1">
-                <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">End</label>
+                <label className="mb-1 block text-xs font-medium text-palette-slate">End</label>
                 <TimePicker12h
                   idPrefix={`habit-fixed-${i}-e`}
                   minuteStep={15}
@@ -259,7 +259,7 @@ export function HabitForm({
               <button
                 type="button"
                 onClick={() => setFixedSlots((prev) => prev.filter((_, idx) => idx !== i))}
-                className="shrink-0 rounded-md border border-zinc-300 px-3 py-2 text-sm text-red-600 dark:border-zinc-600 dark:text-red-400"
+                className="shrink-0 rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-sm text-red-600 hover:bg-palette-hover"
               >
                 Remove
               </button>
@@ -268,22 +268,22 @@ export function HabitForm({
           <button
             type="button"
             onClick={() => setFixedSlots((prev) => [...prev, { day_of_week: -1, start_time: "09:00:00", end_time: "10:00:00" }])}
-            className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            className="text-sm font-medium text-palette-sky hover:text-palette-navy"
           >
             + Add fixed slot
           </button>
         </div>
       ) : type === "flexible" ? (
         <div className="mt-4 space-y-2">
-          <p className="text-sm font-medium">Flexible target</p>
+          <p className="text-sm font-medium text-palette-navy">Flexible target</p>
           <div className="grid gap-2 sm:grid-cols-2">
             <div>
-              <label className="block text-sm">Duration hours</label>
-              <input type="number" min={0} value={durationH} onChange={(e) => setDurationH(Number(e.target.value))} className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800" />
+              <label className="block text-sm text-palette-navy">Duration hours</label>
+              <input type="number" min={0} value={durationH} onChange={(e) => setDurationH(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy" />
             </div>
             <div>
-              <label className="block text-sm">Duration minutes</label>
-              <select value={durationM} onChange={(e) => setDurationM(Number(e.target.value))} className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">
+              <label className="block text-sm text-palette-navy">Duration minutes</label>
+              <select value={durationM} onChange={(e) => setDurationM(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy">
                 {minuteOptions.map((m) => (
                   <option key={m} value={m}>
                     {m}
@@ -293,11 +293,11 @@ export function HabitForm({
             </div>
           </div>
           <div>
-            <label className="block text-sm">Preference mode</label>
+            <label className="block text-sm text-palette-navy">Preference mode</label>
             <select
               value={preferenceMode}
               onChange={(e) => setPreferenceMode(e.target.value as FlexiblePreferenceMode)}
-              className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800"
+              className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy"
             >
               <option value="preferred_days">Preferred days</option>
               <option value="times_per_week">Times per week</option>
@@ -305,14 +305,14 @@ export function HabitForm({
           </div>
           {preferenceMode === "preferred_days" ? (
             <div className="sm:col-span-2">
-              <label className="block text-sm">Preferred days</label>
+              <label className="block text-sm text-palette-navy">Preferred days</label>
               <div className="mt-1 flex flex-wrap gap-2">
                 {WEEKDAY_FULL.map((d, idx) => (
                   <button
                     type="button"
                     key={d}
                     onClick={() => toggleDay(idx)}
-                    className={`rounded px-2 py-1 text-xs sm:text-sm ${preferredDays.includes(idx) ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"}`}
+                    className={`rounded-lg px-2 py-1 text-xs sm:text-sm ${preferredDays.includes(idx) ? "bg-palette-sky font-medium text-palette-ink" : "border border-palette-card-border bg-palette-card-bg text-palette-slate hover:bg-palette-hover"}`}
                   >
                     {d}
                   </button>
@@ -321,19 +321,19 @@ export function HabitForm({
             </div>
           ) : (
             <div className="sm:col-span-2">
-              <label className="block text-sm">Times per week</label>
+              <label className="block text-sm text-palette-navy">Times per week</label>
               <input
                 type="number"
                 min={1}
                 value={timesPerWeek}
                 onChange={(e) => setTimesPerWeek(e.target.value === "" ? "" : Number(e.target.value))}
-                className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800"
+                className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy"
               />
             </div>
           )}
           <div className="sm:col-span-2 space-y-2">
             <div className="flex items-center justify-between">
-              <label className="block text-sm">Preferred hours by day</label>
+              <label className="block text-sm text-palette-navy">Preferred hours by day</label>
               <button
                 type="button"
                 onClick={() =>
@@ -342,13 +342,13 @@ export function HabitForm({
                     { day_of_week: preferredDays[0] ?? 1, start_time: "09:00:00", end_time: "10:00:00" },
                   ])
                 }
-                className="text-xs font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                className="text-xs font-medium text-palette-sky hover:text-palette-navy"
               >
                 + Add preferred hours
               </button>
             </div>
             {preferredSlots.length === 0 ? (
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              <p className="text-xs text-palette-slate">
                 No preferred hours set. Scheduler will use available free time based on selected mode.
               </p>
             ) : (
@@ -361,7 +361,7 @@ export function HabitForm({
                         prev.map((x, idx) => (idx === i ? { ...x, day_of_week: Number(e.target.value) } : x))
                       )
                     }
-                    className="rounded border border-zinc-300 px-2 py-2 dark:border-zinc-600 dark:bg-zinc-800"
+                    className="rounded-lg border border-palette-card-border bg-palette-card-bg px-2 py-2 text-palette-navy"
                   >
                     {WEEKDAY_FULL.map((d, idx) => (
                       <option key={d} value={idx}>
@@ -394,7 +394,7 @@ export function HabitForm({
                   <button
                     type="button"
                     onClick={() => setPreferredSlots((prev) => prev.filter((_, idx) => idx !== i))}
-                    className="rounded border border-zinc-300 px-3 py-2 text-sm text-red-600 dark:border-zinc-600"
+                    className="rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-sm text-red-600 hover:bg-palette-hover"
                   >
                     Remove
                   </button>
@@ -406,10 +406,10 @@ export function HabitForm({
       ) : null}
 
       <div className="mt-4 flex gap-2">
-        <button type="submit" disabled={loading} className="rounded bg-zinc-900 px-4 py-2 text-sm text-white dark:bg-zinc-100 dark:text-zinc-900">
+        <button type="submit" disabled={loading} className="rounded-lg bg-palette-sky px-4 py-2 text-sm font-medium text-palette-ink disabled:opacity-60">
           {loading ? "Saving..." : habit ? "Update" : "Add habit"}
         </button>
-        <button type="button" onClick={onClose} className="rounded border border-zinc-300 px-4 py-2 text-sm dark:border-zinc-600">
+        <button type="button" onClick={onClose} className="rounded-lg border border-palette-card-border bg-palette-card-bg px-4 py-2 text-sm text-palette-navy hover:bg-palette-hover">
           Cancel
         </button>
       </div>

@@ -185,6 +185,18 @@ create table if not exists public.user_events (
   check (ends_at > starts_at)
 );
 
+alter table public.user_events
+  add column if not exists assignment_id uuid references public.assignments(id) on delete set null;
+alter table public.user_events
+  add column if not exists habit_id uuid references public.habits(id) on delete set null;
+
+alter table public.user_events
+  drop constraint if exists user_events_assignment_habit_mutual_excl;
+alter table public.user_events
+  add constraint user_events_assignment_habit_mutual_excl check (
+    not (assignment_id is not null and habit_id is not null)
+  );
+
 create table if not exists public.class_meeting_overrides (
   id uuid primary key default gen_random_uuid(),
   class_meeting_id uuid not null references public.class_meetings(id) on delete cascade,

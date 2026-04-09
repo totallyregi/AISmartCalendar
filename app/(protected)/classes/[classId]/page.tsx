@@ -30,14 +30,14 @@ export default async function ClassDetailPage({
   return (
     <div className="space-y-6 animate-in">
       <div>
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+        <h1 className="text-2xl font-medium text-palette-navy">
           {cls.class_code} — {cls.class_name}
         </h1>
         <ScheduleSlotList slots={cls.class_meetings ?? []} emptyLabel="No recurring meetings" />
       </div>
 
       <section>
-        <h2 className="mb-2 text-lg font-semibold text-zinc-800 dark:text-zinc-200">Assignments</h2>
+        <h2 className="mb-2 text-lg font-medium text-palette-navy">Assignments</h2>
         <AssignmentList classId={classId} assignments={(assignments ?? []) as Assignment[]} />
       </section>
     </div>

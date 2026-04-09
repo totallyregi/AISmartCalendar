@@ -21,9 +21,26 @@ function formatWeekLabel(weekStart: string, weekEnd?: string) {
 type PlannerStatus = {
   currentWeekStart: string;
   nextWeekToGenerate: string;
+  allowedGenerateWeeks: string[];
   hasDraftChain: boolean;
-  generatedWeeks: { weekStart: string; weekEnd: string; draftCount: number }[];
+  generatedWeeks: {
+    weekStart: string;
+    weekEnd: string;
+    draftCount: number;
+    appliedCalendarBlockCount?: number;
+    appliedOnly?: boolean;
+  }[];
   totalDraftBlocks: number;
+};
+
+type GenerateSummary = {
+  weekStart: string;
+  mode: string;
+  blocks: number;
+  assignmentMinutes: number;
+  perDay?: Record<string, number>;
+  unscheduled: unknown[];
+  warning?: string;
 };
 
 export function DashboardPlanner({
@@ -34,7 +51,7 @@ export function DashboardPlanner({
   hasCurrentPlan: boolean;
 }) {
   const router = useRouter();
-  const [nextWeekStart, setNextWeekStart] = useState(currentWeek);
+  const [generateTargetWeek, setGenerateTargetWeek] = useState(currentWeek);
   const [mode, setMode] = useState<SchedulerMode>("relaxed");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -42,6 +59,9 @@ export function DashboardPlanner({
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<PlannerStatus | null>(null);
   const [preferencesConfigured, setPreferencesConfigured] = useState(false);
+  const [insights, setInsights] = useState<string[]>([]);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsFetchError, setInsightsFetchError] = useState<string | null>(null);
 
   const loadPreferenceState = useCallback(async () => {
     const res = await fetch("/api/preferences/scheduler");
@@ -49,32 +69,93 @@ export function DashboardPlanner({
     setPreferencesConfigured(!!data.configured);
   }, []);
 
-  const loadDraft = useCallback(async () => {
-    const res = await fetch(`/api/plans/weekly?weekStart=${nextWeekStart}`);
+  const syncGenerateTargetFromServer = useCallback(async () => {
+    const res = await fetch(`/api/plans/weekly?weekStart=${encodeURIComponent(currentWeek)}`);
     const data = await res.json().catch(() => ({}));
     if (data.status) {
-      setStatus(data.status as PlannerStatus);
-      setNextWeekStart(String(data.status.nextWeekToGenerate ?? currentWeek));
+      const s = data.status as PlannerStatus;
+      setStatus(s);
+      setGenerateTargetWeek(String(s.nextWeekToGenerate ?? currentWeek));
     }
-  }, [nextWeekStart, currentWeek]);
+  }, [currentWeek]);
 
   useEffect(() => {
-    queueMicrotask(() => {
-      void loadDraft();
-      void loadPreferenceState();
-    });
-  }, [loadDraft, loadPreferenceState]);
+    void loadPreferenceState();
+  }, [loadPreferenceState]);
+
+  useEffect(() => {
+    const ac = new AbortController();
+    (async () => {
+      const res = await fetch(`/api/plans/weekly?weekStart=${encodeURIComponent(generateTargetWeek)}`, {
+        signal: ac.signal,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (ac.signal.aborted || !data.status) return;
+      setStatus(data.status as PlannerStatus);
+    })().catch(() => {});
+    return () => ac.abort();
+  }, [generateTargetWeek]);
+
+  useEffect(() => {
+    if (!status?.allowedGenerateWeeks?.length) return;
+    if (!status.allowedGenerateWeeks.includes(generateTargetWeek)) {
+      setGenerateTargetWeek(status.nextWeekToGenerate);
+    }
+  }, [status, generateTargetWeek]);
+
+  useEffect(() => {
+    const ac = new AbortController();
+    (async () => {
+      const res = await fetch(`/api/plans/weekly?weekStart=${encodeURIComponent(currentWeek)}`, {
+        signal: ac.signal,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (ac.signal.aborted || !data.status) return;
+      const s = data.status as PlannerStatus;
+      setStatus(s);
+      setGenerateTargetWeek(String(s.nextWeekToGenerate ?? currentWeek));
+    })().catch(() => {});
+    return () => ac.abort();
+  }, [currentWeek]);
+
+  async function fetchInsights(summary: GenerateSummary) {
+    setInsightsLoading(true);
+    setInsights([]);
+    setInsightsFetchError(null);
+    try {
+      const res = await fetch("/api/calendar/insights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ summary }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setInsightsFetchError(typeof data.error === "string" ? data.error : "Could not load insights.");
+        setInsights([]);
+        return;
+      }
+      const list = Array.isArray(data.insights) ? data.insights.filter((x: unknown) => typeof x === "string") : [];
+      setInsights(list as string[]);
+    } catch {
+      setInsightsFetchError("Could not load insights.");
+      setInsights([]);
+    } finally {
+      setInsightsLoading(false);
+    }
+  }
 
   async function generateWeek() {
     setLoading(true);
     setError(null);
     setMessage(null);
     setScheduleWarning(null);
+    setInsights([]);
+    setInsightsFetchError(null);
     const res = await fetch("/api/plans/weekly/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        weekStart: nextWeekStart,
+        weekStart: generateTargetWeek,
         mode,
       }),
     });
@@ -95,15 +176,32 @@ export function DashboardPlanner({
     } else {
       setScheduleWarning(null);
     }
-    await loadDraft();
+    const summary: GenerateSummary = {
+      weekStart: String(data.weekStart ?? ""),
+      mode: String(data.mode ?? mode),
+      blocks: Number(data.blocks ?? 0),
+      assignmentMinutes: Number(data.assignmentMinutes ?? 0),
+      perDay: typeof data.perDay === "object" && data.perDay !== null ? (data.perDay as Record<string, number>) : undefined,
+      unscheduled: unsched,
+      warning: typeof data.warning === "string" ? data.warning : undefined,
+    };
+    await fetchInsights(summary);
+    await syncGenerateTargetFromServer();
     router.refresh();
   }
 
   async function resetSuggestions() {
-    if (!confirm("Reset all AI suggestions and restart generation from this week?")) return;
+    if (
+      !confirm(
+        "Remove all pending (unapplied) AI draft blocks? Weeks you already applied to your main calendar are not undone; generation progress for those weeks stays in place."
+      )
+    )
+      return;
     setLoading(true);
     setError(null);
     setMessage(null);
+    setInsights([]);
+    setInsightsFetchError(null);
     const res = await fetch("/api/plans/weekly/reset", { method: "POST" });
     const data = await res.json().catch(() => ({}));
     setLoading(false);
@@ -111,8 +209,10 @@ export function DashboardPlanner({
       setError(data.error ?? "Reset failed");
       return;
     }
-    setMessage(`Reset suggestions for ${data.resetWeeks ?? 0} week(s). You can now regenerate from this week.`);
-    await loadDraft();
+    setMessage(
+      `Removed unapplied drafts for ${data.resetWeeks ?? 0} week(s). Your applied weeks still count toward what to generate next.`
+    );
+    await syncGenerateTargetFromServer();
     router.refresh();
   }
 
@@ -132,107 +232,170 @@ export function DashboardPlanner({
       return;
     }
     setMessage(`Applied ${data.applied ?? 0} AI events to your main Calendar`);
-    await loadDraft();
+    await syncGenerateTargetFromServer();
     router.refresh();
   }
 
+  const card = "rounded-xl border border-palette-card-border bg-palette-card-bg/95 shadow-sm";
+  const inner = "space-y-2 rounded-lg border border-palette-card-border bg-palette-muted-panel/60 p-3";
+
   return (
-    <div className="space-y-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <div className={`space-y-4 ${card} p-5`}>
       <div>
-        <h2 className="text-lg font-semibold text-zinc-800 dark:text-zinc-200">Suggestion Controls</h2>
-        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-          Generate in AI Calendar first, then apply to your main Calendar when ready.
-        </p>
+        <h2 className="text-lg font-semibold text-palette-navy">Suggestion Controls</h2>
+        <p className="mt-1 text-xs text-palette-slate">Generate in AI Calendar first, then apply to your main Calendar when ready.</p>
       </div>
 
-      <section className="space-y-2 rounded-lg border border-zinc-200/80 p-3 dark:border-zinc-700/80">
-        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Generate suggestions</p>
+      <section className={inner}>
+        <p className="text-xs font-medium uppercase tracking-wide text-palette-slate/80">Generate suggestions</p>
         <div className="space-y-2">
-          <div className="rounded border border-zinc-200 px-3 py-2 text-sm text-zinc-700 dark:border-zinc-700 dark:text-zinc-300">
-            <p className="text-xs uppercase tracking-wide text-zinc-500">Next week to generate</p>
-            <p className="mt-1 font-medium">{formatWeekLabel(nextWeekStart)}</p>
-          </div>
+          <label className="block rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-sm text-palette-slate">
+            <span className="text-xs uppercase tracking-wide text-palette-slate/70">Week to generate</span>
+            <select
+              value={generateTargetWeek}
+              onChange={(e) => setGenerateTargetWeek(e.target.value)}
+              disabled={!status?.allowedGenerateWeeks?.length}
+              className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-2 py-1.5 font-medium text-palette-navy disabled:opacity-50"
+            >
+              {(status?.allowedGenerateWeeks ?? [generateTargetWeek]).map((w) => (
+                <option key={w} value={w}>
+                  {formatWeekLabel(w)}
+                </option>
+              ))}
+            </select>
+          </label>
+          {status && generateTargetWeek !== status.nextWeekToGenerate && (
+            <p className="text-xs text-palette-slate">
+              Suggested next: {formatWeekLabel(status.nextWeekToGenerate)}. You are regenerating a different allowed week.
+            </p>
+          )}
         </div>
         <div className="mt-2 grid gap-2 sm:grid-cols-3">
           <div className="sm:col-span-2">
-            <label className="mt-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Mode</label>
-            <select value={mode} onChange={(e) => setMode(e.target.value as SchedulerMode)} className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">
+            <label className="mt-2 block text-sm font-medium text-palette-navy">Mode</label>
+            <select
+              value={mode}
+              onChange={(e) => setMode(e.target.value as SchedulerMode)}
+              className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-slate"
+            >
               <option value="intense">Intense (finish faster)</option>
               <option value="relaxed">Relaxed (target preferred hours)</option>
               <option value="lazy">Lazy (minimum daily effort)</option>
             </select>
           </div>
           <div className="flex items-end">
-            <button type="button" onClick={generateWeek} disabled={loading || !preferencesConfigured} className="w-full rounded bg-emerald-600 px-3 py-2 text-sm text-white disabled:opacity-50 hover:bg-emerald-700">
+            <button
+              type="button"
+              onClick={() => void generateWeek()}
+              disabled={loading || !preferencesConfigured}
+              className="w-full rounded-lg bg-palette-sky px-3 py-2 text-sm font-medium text-palette-ink shadow-sm transition-colors hover:brightness-95 disabled:opacity-50"
+            >
               Generate suggested schedule
             </button>
           </div>
         </div>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          Assignment and flexible-habit suggestions are placed Monday–Saturday only (Sundays excluded).
-        </p>
+        <p className="text-xs text-palette-slate">Assignment and flexible-habit suggestions are placed Monday–Saturday only (Sundays excluded).</p>
         {!preferencesConfigured && (
-          <p className="text-xs text-amber-600 dark:text-amber-400">
-            Configure <Link href="/preferences" className="underline">Preferences</Link> (including at least one work window) before generating.
+          <p className="text-xs text-amber-800/90 dark:text-amber-200/90">
+            Configure{" "}
+            <Link href="/preferences" className="font-medium text-palette-sky underline hover:text-palette-navy">
+              Preferences
+            </Link>{" "}
+            (including at least one work window) before generating.
           </p>
         )}
-        <div className="flex items-center justify-between gap-2 rounded border border-zinc-200/80 p-2 dark:border-zinc-700/80">
-          <div className="text-xs text-zinc-500">
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-palette-card-border bg-palette-muted-panel/50 p-2">
+          <div className="text-xs text-palette-slate">
             {(status?.totalDraftBlocks ?? 0) > 0
-              ? "Clears all unapplied AI draft blocks (any week), then you can generate from the current week again."
-              : "No AI draft suggestions in the database."}
+              ? "Clears pending (unapplied) AI draft blocks only. Does not remove events already applied to your main calendar or reset progress for weeks you finished applying."
+              : "No unapplied AI draft suggestions in the database."}
           </div>
           <button
             type="button"
-            onClick={resetSuggestions}
+            onClick={() => void resetSuggestions()}
             disabled={loading || (status?.totalDraftBlocks ?? 0) === 0}
-            className="rounded border border-red-300 px-3 py-1 text-xs text-red-600 disabled:opacity-50 dark:border-red-700"
+            className="rounded-lg border border-red-200 px-3 py-1 text-xs text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50"
           >
             Reset suggestions
           </button>
         </div>
       </section>
 
-      <section className="space-y-2 rounded-lg border border-zinc-200/80 p-3 dark:border-zinc-700/80">
-        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Generation tracker</p>
+      {(insightsLoading || insights.length > 0 || insightsFetchError) && (
+        <section
+          className="rounded-xl border border-palette-green/35 bg-palette-green/10 p-4"
+          aria-busy={insightsLoading}
+          aria-live="polite"
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide text-palette-navy">Insights</p>
+          <p className="mt-0.5 text-xs text-palette-slate">Suggestions based on this generation — the calendar was not changed by this summary.</p>
+          {insightsLoading ? (
+            <p className="mt-3 text-sm text-palette-slate">Generating insights…</p>
+          ) : insightsFetchError ? (
+            <p className="mt-3 text-sm text-red-600">{insightsFetchError}</p>
+          ) : (
+            <ul className="mt-3 list-inside list-disc space-y-2 text-sm leading-relaxed text-palette-slate marker:text-palette-green">
+              {insights.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
+      <section className={inner}>
+        <p className="text-xs font-medium uppercase tracking-wide text-palette-slate/80">Generation tracker</p>
         {status?.generatedWeeks?.length ? (
-          <ul className="space-y-1 text-sm">
+          <ul className="space-y-1 text-sm text-palette-slate">
             {status.generatedWeeks.map((w) => (
-              <li key={w.weekStart} className="flex items-center justify-between rounded border border-zinc-200 px-2 py-1 dark:border-zinc-700">
+              <li key={w.weekStart} className="flex items-center justify-between rounded-lg border border-palette-card-border bg-palette-card-bg px-2 py-1">
                 <span>{formatWeekLabel(w.weekStart, w.weekEnd)}</span>
-                <span className="text-xs text-zinc-500">{w.draftCount} draft block(s)</span>
+                <span className="text-xs text-palette-slate/80">
+                  {(() => {
+                    const pending = w.draftCount;
+                    const onCalendar = w.appliedCalendarBlockCount ?? 0;
+                    if (pending > 0 && onCalendar > 0) {
+                      return `${pending} draft(s) pending · ${onCalendar} on calendar`;
+                    }
+                    if (pending > 0) return `${pending} draft block(s) pending`;
+                    if (onCalendar > 0) return `${onCalendar} block(s) on calendar (applied)`;
+                    return "No drafts · nothing applied from AI this week";
+                  })()}
+                </span>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-xs text-zinc-500">No generated weeks yet.</p>
+          <p className="text-xs text-palette-slate">No generated weeks yet.</p>
         )}
-        <p className="text-xs text-zinc-500">
-          Current week: {formatWeekLabel(status?.currentWeekStart ?? currentWeek)}. Next step: generate {formatWeekLabel(nextWeekStart)}.
+        <p className="text-xs text-palette-slate">
+          Current week: {formatWeekLabel(status?.currentWeekStart ?? currentWeek)}. Suggested next step: generate{" "}
+          {formatWeekLabel(status?.nextWeekToGenerate ?? currentWeek)}.
         </p>
       </section>
 
-      <section className="space-y-2 rounded-lg border border-zinc-200/80 p-3 dark:border-zinc-700/80">
-        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Apply</p>
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={applyToCalendar} disabled={loading || !(status?.totalDraftBlocks)} className="rounded bg-zinc-900 px-3 py-2 text-sm text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900">
+      <section className={inner}>
+        <p className="text-xs font-medium uppercase tracking-wide text-palette-slate/80">Apply</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void applyToCalendar()}
+            disabled={loading || !status?.totalDraftBlocks}
+            className="rounded-lg bg-palette-navy px-3 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:brightness-110 disabled:opacity-50"
+          >
             Apply AI schedule to Calendar
           </button>
-          <span className="text-xs text-zinc-500">Draft events: {status?.totalDraftBlocks ?? 0}</span>
+          <span className="text-xs text-palette-slate">Draft events: {status?.totalDraftBlocks ?? 0}</span>
         </div>
       </section>
 
       {!hasCurrentPlan && (
-        <p className="text-sm text-amber-600 dark:text-amber-400">
-          You must generate the current week first before future weeks.
-        </p>
+        <p className="text-sm text-amber-800/90">You must generate the current week first before future weeks.</p>
       )}
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-      {message && <p className="text-sm text-emerald-700 dark:text-emerald-400">{message}</p>}
+      {error && <p className="text-sm text-red-700">{error}</p>}
+      {message && <p className="text-sm font-medium text-palette-navy">{message}</p>}
       {scheduleWarning && (
-        <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
-          {scheduleWarning}
-        </p>
+        <p className="rounded-xl border border-amber-200/80 bg-amber-50/90 p-3 text-sm text-amber-950">{scheduleWarning}</p>
       )}
     </div>
   );

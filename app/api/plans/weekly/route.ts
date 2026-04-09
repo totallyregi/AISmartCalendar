@@ -1,22 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
+import {
+  buildAllowedGenerateWeeks,
+  buildSequentialStatus,
+  fetchSequencingWeekStarts,
+} from "@/lib/planner/weekGenerationStatus";
 import { NextResponse } from "next/server";
 import { DEFAULT_USER_TIMEZONE } from "@/lib/datetimeDisplay";
-import { addDaysToDateKey, isValidTimeZone, weekStartSundayDateKey } from "@/lib/timezone";
-
-function buildSequentialStatus(currentWeekStart: string, generatedWeeks: string[], timeZone: string) {
-  const generatedSet = new Set(generatedWeeks);
-  const contiguousGeneratedWeeks: string[] = [];
-  let cursor = currentWeekStart;
-  while (generatedSet.has(cursor)) {
-    contiguousGeneratedWeeks.push(cursor);
-    cursor = addDaysToDateKey(cursor, 7, timeZone);
-  }
-  return {
-    nextWeekToGenerate: cursor,
-    contiguousGeneratedWeeks,
-    hasDraftChain: contiguousGeneratedWeeks.length > 0,
-  };
-}
+import { addDaysToDateKey, isValidTimeZone, weekStartSundayDateKey, zonedDateTimeToUtc } from "@/lib/timezone";
 
 export async function GET(request: Request) {
   const supabase = await createClient();
@@ -33,16 +23,9 @@ export async function GET(request: Request) {
   const weekStartInput = qs.get("weekStart");
   const weekStart = weekStartInput ?? currentWeekStart;
 
-  const { data: draftWeekRows } = await supabase
-    .from("ai_draft_blocks")
-    .select("week_start_date")
-    .eq("user_id", user.id)
-    .eq("applied", false)
-    .gte("week_start_date", currentWeekStart);
-  const generatedWeeks = Array.from(
-    new Set((draftWeekRows ?? []).map((r) => String(r.week_start_date)).filter(Boolean))
-  ).sort();
-  const status = buildSequentialStatus(currentWeekStart, generatedWeeks, timeZone);
+  const distinctWeeks = await fetchSequencingWeekStarts(supabase, user.id, currentWeekStart);
+  const status = buildSequentialStatus(currentWeekStart, distinctWeeks, timeZone);
+  const allowedGenerateWeeks = buildAllowedGenerateWeeks(currentWeekStart, status.nextWeekToGenerate, timeZone);
 
   const { data: plan } = await supabase
     .from("weekly_plans")
@@ -74,13 +57,36 @@ export async function GET(request: Request) {
 
   const weekSummaries = await Promise.all(
     status.contiguousGeneratedWeeks.map(async (w) => {
-      const { count } = await supabase
+      const { count: pendingDraftCount } = await supabase
         .from("ai_draft_blocks")
         .select("id", { count: "exact", head: true })
         .eq("user_id", user.id)
         .eq("applied", false)
         .eq("week_start_date", w);
-      return { weekStart: w, weekEnd: addDaysToDateKey(w, 6, timeZone), draftCount: count ?? 0 };
+
+      const weekEndExclusive = addDaysToDateKey(w, 7, timeZone);
+      const weekStartUtc = zonedDateTimeToUtc(w, "00:00:00", timeZone).toISOString();
+      const weekEndUtc = zonedDateTimeToUtc(weekEndExclusive, "00:00:00", timeZone).toISOString();
+
+      const { count: calendarAppliedCount } = await supabase
+        .from("weekly_plan_blocks")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("origin", "applied")
+        .gte("starts_at", weekStartUtc)
+        .lt("starts_at", weekEndUtc);
+
+      const draftCount = pendingDraftCount ?? 0;
+      const appliedCalendarBlockCount = calendarAppliedCount ?? 0;
+      const weekEnd = addDaysToDateKey(w, 6, timeZone);
+      return {
+        weekStart: w,
+        weekEnd,
+        draftCount,
+        appliedCalendarBlockCount,
+        /** @deprecated use draftCount === 0; label was confusing */
+        appliedOnly: draftCount === 0,
+      };
     })
   );
 
@@ -92,6 +98,7 @@ export async function GET(request: Request) {
     status: {
       currentWeekStart,
       nextWeekToGenerate: status.nextWeekToGenerate,
+      allowedGenerateWeeks,
       hasDraftChain: status.hasDraftChain,
       generatedWeeks: weekSummaries,
       totalDraftBlocks: totalDraftBlocks ?? 0,

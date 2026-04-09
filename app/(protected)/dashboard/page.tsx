@@ -62,7 +62,12 @@ export default async function DashboardPage({
     supabase.from("class_sections").select("id,class_code,class_name,class_meetings(id,day_of_week,start_time,end_time)").eq("user_id", user?.id),
     supabase.from("habits").select("id,name,habit_fixed_slots(id,day_of_week,start_time,end_time)").eq("user_id", user?.id).eq("type", "fixed"),
     supabase.from("weekly_plan_blocks").select("id,starts_at,ends_at,title,origin,block_type").eq("user_id", user?.id).eq("origin", "applied").gte("starts_at", startIso).lte("starts_at", endIso),
-    supabase.from("user_events").select("id,starts_at,ends_at,title").eq("user_id", user?.id).gte("starts_at", startIso).lte("starts_at", endIso),
+    supabase
+      .from("user_events")
+      .select("id,starts_at,ends_at,title,assignment_id,habit_id")
+      .eq("user_id", user?.id)
+      .gte("starts_at", startIso)
+      .lte("starts_at", endIso),
     supabase
       .from("class_meeting_overrides")
       .select("id,class_meeting_id,override_date,canceled,override_start_time,override_end_time")
@@ -154,8 +159,35 @@ export default async function DashboardPage({
 
   (userEventRes.data ?? []).forEach((e) => {
     const d = zonedDateKeyFromIso(e.starts_at as string, timeZone);
-    ensure(d).personal += 1;
-    events.push({ id: e.id as string, starts_at: e.starts_at as string, ends_at: e.ends_at as string, title: e.title as string, source: "personal" });
+    const row = e as { assignment_id?: string | null; habit_id?: string | null };
+    if (row.assignment_id) {
+      ensure(d).assignments += 1;
+      events.push({
+        id: e.id as string,
+        starts_at: e.starts_at as string,
+        ends_at: e.ends_at as string,
+        title: e.title as string,
+        source: "assignment",
+      });
+    } else if (row.habit_id) {
+      ensure(d).flexibleHabits += 1;
+      events.push({
+        id: e.id as string,
+        starts_at: e.starts_at as string,
+        ends_at: e.ends_at as string,
+        title: e.title as string,
+        source: "flexible_habit",
+      });
+    } else {
+      ensure(d).personal += 1;
+      events.push({
+        id: e.id as string,
+        starts_at: e.starts_at as string,
+        ends_at: e.ends_at as string,
+        title: e.title as string,
+        source: "personal",
+      });
+    }
   });
 
   (draftRes.data ?? []).forEach((b) => {
@@ -185,8 +217,8 @@ export default async function DashboardPage({
   return (
     <div className="space-y-6 animate-in">
       <div>
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">AI Calendar</h1>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">Suggested calendar workspace. Review drafts here, then choose whether to apply to main Calendar.</p>
+        <h1 className="text-2xl font-bold text-palette-navy">AI Calendar</h1>
+        <p className="text-sm text-palette-slate">Suggested calendar workspace. Review drafts here, then choose whether to apply to main Calendar.</p>
       </div>
 
       <DashboardPlanner currentWeek={currentWeek} hasCurrentPlan={!!planRes.data} />

@@ -55,7 +55,7 @@ export default function HelpPage() {
             ["#preferences", "Preferences"],
             ["#workflow", "Recommended weekly flow"],
             ["#calendar-ui", "Calendar views & colors"],
-            ["#extras", "Personal events & Google"],
+            ["#extras", "Add Event & Google"],
             ["#mobile", "Mobile"],
             ["#troubleshooting", "Troubleshooting"],
           ].map(([href, label]) => (
@@ -231,17 +231,17 @@ export default function HelpPage() {
 
       <Section id="calendar-ui" title="Calendar views & colors">
         <p>
-          On both Calendar and AI Calendar, the <strong className="font-medium text-zinc-800 dark:text-zinc-200">month grid</strong> shows dots and short previews by time; pick a date to open the <strong className="font-medium text-zinc-800 dark:text-zinc-200">day details</strong> panel with a full timeline. Colors distinguish sources (external, class, fixed habit, flexible habit, assignment, personal, and generated drafts on the AI view). Use <strong className="font-medium text-zinc-800 dark:text-zinc-200">Add personal event</strong> on the main calendar for one-off busy time.
+          On both Calendar and AI Calendar, the <strong className="font-medium text-zinc-800 dark:text-zinc-200">month grid</strong> shows dots and short previews by time; pick a date to open the <strong className="font-medium text-zinc-800 dark:text-zinc-200">day details</strong> panel with a full timeline. Colors distinguish sources (external, class, fixed habit, flexible habit, assignment, personal, and generated drafts on the AI view). Use <strong className="font-medium text-zinc-800 dark:text-zinc-200">Add Event</strong> on the main calendar for personal blocks, assignment work sessions (time is deducted from the assignment&apos;s remaining minutes), or a scheduled flexible habit session that counts as that habit for the week.
         </p>
       </Section>
 
-      <Section id="extras" title="Personal events & Google Calendar">
+      <Section id="extras" title="Add Event & Google Calendar">
         <p>
           From{" "}
           <Link href="/calendar" className={linkCls}>
             Calendar
           </Link>
-          , add personal events that block time. Connect Google from the integration card to import external busy times; those imports affect scheduling visibility.
+          , use <strong className="font-medium text-zinc-800 dark:text-zinc-200">Add Event</strong> to block personal time, log work on an assignment (updating its remaining time), or place a flexible habit for a specific slot so the AI does not schedule that habit again in the same week. Connect Google from the integration card to import external busy times; those imports affect scheduling visibility.
         </p>
       </Section>
 

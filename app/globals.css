@@ -1,28 +1,83 @@
 @import "tailwindcss";
 
+/* Class-based dark: enable with `class="dark"` on <html> (user preference, not system). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f5f2ec;
+  --foreground: #1b2a4a;
+  --palette-navy: #1b2a4a;
+  --palette-sky: #5ba4cf;
+  --palette-green: #6bae8a;
+  --palette-cream: #f5f2ec;
+  --palette-slate: #4a5568;
+  --palette-card-bg: #ffffff;
+  --palette-card-border: #d4d0c8;
+  --palette-hover: #e8e4dc;
+  --palette-muted-panel: #ece8e0;
+  --palette-rail: rgba(245, 242, 236, 0.85);
+  --text-on-accent: #1b2a4a;
+  --sidebar-bg: #1b2a4a;
+  --radius-card: 12px;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #0c1017;
+  --foreground: #e4e9f0;
+  /* Primary text / headings (main shell) */
+  --palette-navy: #e8edf4;
+  --palette-sky: #62b0e8;
+  --palette-green: #7bc8a4;
+  --palette-cream: #0c1017;
+  --palette-slate: #9aa8b8;
+  --palette-card-bg: #151c26;
+  --palette-card-border: #2a3544;
+  --palette-hover: #1e2735;
+  --palette-muted-panel: #121923;
+  --palette-rail: rgba(21, 28, 38, 0.92);
+  --text-on-accent: #0a0e14;
+  --sidebar-bg: #070b10;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-palette-navy: var(--palette-navy);
+  --color-palette-sky: var(--palette-sky);
+  --color-palette-green: var(--palette-green);
+  --color-palette-cream: var(--palette-cream);
+  --color-palette-slate: var(--palette-slate);
+  --color-palette-card-border: var(--palette-card-border);
+  --color-palette-card-bg: var(--palette-card-bg);
+  --color-palette-hover: var(--palette-hover);
+  --color-palette-muted-panel: var(--palette-muted-panel);
+  --color-palette-rail: var(--palette-rail);
+  --color-palette-ink: var(--text-on-accent);
+  --color-sidebar-bg: var(--sidebar-bg);
+  --radius-card: var(--radius-card);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+/* Card */
+.ds-card {
+  background-color: var(--palette-card-bg);
+  border: 1px solid var(--palette-card-border);
+  border-radius: var(--radius-card);
+  box-shadow: 0 1px 2px rgba(27, 42, 74, 0.06);
+}
+
+.dark .ds-card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
 }
 
 /* Animations */
@@ -44,7 +99,6 @@ body {
   animation: slide-in-left 0.25s ease-out backwards;
 }
 
-/* Stagger children that use .animate-in */
 .stagger > * {
   animation: fade-in 0.35s ease-out backwards;
 }

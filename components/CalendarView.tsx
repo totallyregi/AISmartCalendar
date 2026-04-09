@@ -26,13 +26,13 @@ const previewCls: Record<
   "external" | "class" | "fixed_habit" | "flexible_habit" | "assignment" | "generated" | "personal",
   string
 > = {
-  external: "bg-indigo-100/90 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300",
-  class: "bg-violet-100/90 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300",
-  fixed_habit: "bg-green-100/90 text-green-800 dark:bg-green-900/40 dark:text-green-300",
-  flexible_habit: "bg-fuchsia-100/90 text-fuchsia-800 dark:bg-fuchsia-900/40 dark:text-fuchsia-300",
-  assignment: "bg-orange-100/90 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300",
-  generated: "bg-cyan-100/90 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-300",
-  personal: "bg-rose-100/90 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300",
+  external: "bg-indigo-100/90 text-indigo-800",
+  class: "bg-violet-100/90 text-violet-800",
+  fixed_habit: "bg-green-100/90 text-green-800",
+  flexible_habit: "bg-fuchsia-100/90 text-fuchsia-800",
+  assignment: "bg-orange-100/90 text-orange-800",
+  generated: "bg-cyan-100/90 text-cyan-800",
+  personal: "bg-rose-100/90 text-rose-800",
 };
 
 export function CalendarView({
@@ -93,6 +93,10 @@ export function CalendarView({
     const date = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     cells.push({ date, label: d });
   }
+  /* Full 7-column rows: without trailing pad the last row has <7 cells so grid columns are empty and borders vanish. */
+  while (cells.length % 7 !== 0) cells.push({ date: null, label: null });
+
+  const lastRowStartIndex = (Math.ceil(cells.length / 7) - 1) * 7;
 
   function prevMonth() {
     const m = month === 1 ? 12 : month - 1;
@@ -130,23 +134,24 @@ export function CalendarView({
 
   return (
     <div className="animate-in">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-zinc-800 dark:text-zinc-200">
-          {MONTH_NAMES[month - 1]} {year}
-        </h2>
-        <div className="flex gap-2">
-          <button type="button" onClick={prevMonth} className="rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800">← Prev</button>
-          <button type="button" onClick={nextMonth} className="rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800">Next →</button>
+      <div className="ds-card overflow-hidden p-4 sm:p-5">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-lg font-medium text-palette-navy">
+            {MONTH_NAMES[month - 1]} {year}
+          </h2>
+          <div className="flex gap-2">
+            <button type="button" onClick={prevMonth} className="rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-1.5 text-sm font-medium text-palette-navy hover:bg-palette-hover">← Prev</button>
+            <button type="button" onClick={nextMonth} className="rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-1.5 text-sm font-medium text-palette-navy hover:bg-palette-hover">Next →</button>
+          </div>
         </div>
-      </div>
 
-      <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="overflow-x-auto rounded-lg border border-palette-card-border bg-palette-card-bg">
         <div className="min-w-[760px]">
-          <div className="grid grid-cols-7 border-b border-zinc-200 dark:border-zinc-800">
+          <div className="grid grid-cols-7 border-b border-palette-card-border">
             {WEEKDAY_FULL.map((day) => (
               <div
                 key={day}
-                className="border-r border-zinc-200 px-0.5 py-2 text-center text-[10px] font-medium leading-tight text-zinc-500 last:border-r-0 sm:text-xs dark:border-zinc-800 dark:text-zinc-400"
+                className="border-r border-palette-card-border px-0.5 py-2 text-center text-[10px] font-medium leading-tight text-palette-slate last:border-r-0 sm:text-xs"
               >
                 {day}
               </div>
@@ -155,8 +160,20 @@ export function CalendarView({
 
           <div className="grid grid-cols-7">
           {cells.map((cell, i) => {
+            const colIndex = i % 7;
+            const isLastCol = colIndex === 6;
+            const isLastRow = i >= lastRowStartIndex;
+            /* No border-b on last row: outer wrapper’s border is the bottom edge (avoids double line). */
+            const cellBottom = isLastRow ? "" : "border-b border-palette-card-border";
+            const cellEdge = `${isLastCol ? "" : "border-r border-palette-card-border "}${cellBottom}`;
+
             if (!cell.date) {
-              return <div key={`empty-${i}`} className="min-h-[8rem] border-r border-b border-zinc-100 bg-zinc-50/40 last:border-r-0 dark:border-zinc-800 dark:bg-zinc-950/30 md:min-h-[9.5rem]" />;
+              return (
+                <div
+                  key={`empty-${i}`}
+                  className={`min-h-[8rem] bg-palette-cream/50 md:min-h-[9.5rem] ${cellEdge}`}
+                />
+              );
             }
 
             const dayKey = cell.date;
@@ -176,19 +193,19 @@ export function CalendarView({
                 type="button"
                 key={dayKey}
                 onClick={() => openDay(dayKey)}
-                className={`flex min-h-[8rem] w-full flex-col border-r border-b border-zinc-100 p-2 text-left transition-colors last:border-r-0 hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-800 md:min-h-[9.5rem] ${
-                  isSelected ? "bg-zinc-100 dark:bg-zinc-800" : isToday ? "bg-amber-50 dark:bg-amber-950/20" : "bg-white dark:bg-zinc-900"
+                className={`flex min-h-[8rem] min-w-0 w-full flex-col p-2 text-left transition-colors hover:bg-palette-hover/75 md:min-h-[9.5rem] ${cellEdge} ${
+                  isSelected ? "bg-palette-sky/15" : isToday ? "bg-amber-50 dark:bg-amber-950/45" : "bg-palette-card-bg"
                 }`}
               >
-                <span className={`text-sm font-medium ${isToday ? "text-amber-700 dark:text-amber-400" : "text-zinc-700 dark:text-zinc-300"}`}>{cell.label}</span>
+                <span className={`text-sm font-medium ${isToday ? "text-amber-800 dark:text-amber-200" : "text-palette-navy"}`}>{cell.label}</span>
                 <div className="mt-1 flex flex-wrap gap-1">
-                  {meta.external > 0 && <span className="h-2 w-2 rounded-full bg-indigo-500 ring-1 ring-indigo-400/40 dark:ring-indigo-400/25" />}
-                  {meta.classes > 0 && <span className="h-2 w-2 rounded-full bg-violet-500 ring-1 ring-violet-400/40 dark:ring-violet-400/25" />}
-                  {meta.fixedHabits > 0 && <span className="h-2 w-2 rounded-full bg-green-600 ring-1 ring-green-400/40 dark:ring-green-400/25" />}
-                  {meta.flexibleHabits > 0 && <span className="h-2 w-2 rounded-full bg-fuchsia-500 ring-1 ring-fuchsia-400/40 dark:ring-fuchsia-400/25" />}
-                  {meta.assignments > 0 && <span className="h-2 w-2 rounded-full bg-orange-500 ring-1 ring-orange-400/40 dark:ring-orange-400/25" />}
-                  {showGeneratedDots && meta.generated > 0 && <span className="h-2 w-2 rounded-full bg-cyan-400 ring-1 ring-cyan-300/50 dark:ring-cyan-300/35" />}
-                  {meta.personal > 0 && <span className="h-2 w-2 rounded-full bg-rose-500 ring-1 ring-rose-400/40 dark:ring-rose-400/25" />}
+                  {meta.external > 0 && <span className="h-2 w-2 rounded-full bg-indigo-500 ring-1 ring-indigo-400/40" />}
+                  {meta.classes > 0 && <span className="h-2 w-2 rounded-full bg-violet-500 ring-1 ring-violet-400/40" />}
+                  {meta.fixedHabits > 0 && <span className="h-2 w-2 rounded-full bg-green-600 ring-1 ring-green-400/40" />}
+                  {meta.flexibleHabits > 0 && <span className="h-2 w-2 rounded-full bg-fuchsia-500 ring-1 ring-fuchsia-400/40" />}
+                  {meta.assignments > 0 && <span className="h-2 w-2 rounded-full bg-orange-500 ring-1 ring-orange-400/40" />}
+                  {showGeneratedDots && meta.generated > 0 && <span className="h-2 w-2 rounded-full bg-cyan-400 ring-1 ring-cyan-300/50" />}
+                  {meta.personal > 0 && <span className="h-2 w-2 rounded-full bg-rose-500 ring-1 ring-rose-400/40" />}
                 </div>
                 <div className="mt-2 space-y-1">
                   {previews.map((p, idx) => (
@@ -200,13 +217,14 @@ export function CalendarView({
                     </div>
                   ))}
                   {hiddenCount > 0 && (
-                    <div className="text-[10px] text-zinc-500 dark:text-zinc-400">+{hiddenCount} more</div>
+                    <div className="text-[10px] text-palette-slate">+{hiddenCount} more</div>
                   )}
                 </div>
               </button>
             );
           })}
           </div>
+        </div>
         </div>
       </div>
 

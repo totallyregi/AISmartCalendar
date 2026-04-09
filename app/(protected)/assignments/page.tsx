@@ -39,8 +39,8 @@ export default async function AssignmentsPage() {
   return (
     <div className="space-y-6 animate-in">
       <div>
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">To-do List</h1>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+        <h1 className="text-2xl font-medium text-palette-navy">To-do List</h1>
+        <p className="text-sm text-palette-slate">
           All assignments across classes. Sort and manage in one place.
         </p>
       </div>

@@ -34,11 +34,11 @@ function FlexibleHabitMeta({ h, flex }: { h: HabitRow; flex: Record<string, unkn
   const slots = h.habit_flexible_preferred_slots ?? [];
 
   return (
-    <div className="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+    <div className="space-y-2 text-sm text-palette-slate">
       <p>
-        <span className="font-medium text-zinc-800 dark:text-zinc-200">{Number(flex?.duration_minutes ?? 0)} min</span>
+        <span className="font-medium text-palette-navy">{Number(flex?.duration_minutes ?? 0)} min</span>
         {mode === "times_per_week" ? (
-          <span className="text-zinc-500 dark:text-zinc-400"> · {Number(flex?.times_per_week ?? 0)}× per week</span>
+          <span className="text-palette-slate"> · {Number(flex?.times_per_week ?? 0)}× per week</span>
         ) : null}
       </p>
       {mode === "preferred_days" && sortedDays.length > 0 ? (
@@ -46,7 +46,7 @@ function FlexibleHabitMeta({ h, flex }: { h: HabitRow; flex: Record<string, unkn
           {sortedDays.map((d) => (
             <span
               key={d}
-              className="rounded-md border border-zinc-200 bg-white px-2 py-0.5 text-xs font-medium text-zinc-700 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-300"
+              className="rounded-md border border-palette-card-border bg-palette-card-bg px-2 py-0.5 text-xs font-medium text-palette-navy"
             >
               {WEEKDAY_FULL[d]}
             </span>
@@ -55,7 +55,7 @@ function FlexibleHabitMeta({ h, flex }: { h: HabitRow; flex: Record<string, unkn
       ) : null}
       {slots.length > 0 ? (
         <div>
-          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Preferred windows</p>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-palette-slate">Preferred windows</p>
           <ScheduleSlotList slots={slots} dense />
         </div>
       ) : null}
@@ -69,15 +69,15 @@ function HabitListItem({ h, onEdit }: { h: HabitRow; onEdit: () => void }) {
   const fixedSlots = [...(h.habit_fixed_slots ?? [])].sort(compareDayTimeSlots);
 
   return (
-    <li className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <li className="ds-card p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="min-w-0 flex-1">
-          <p className="font-medium text-zinc-900 dark:text-zinc-100">{h.name}</p>
+          <p className="font-medium text-palette-navy">{h.name}</p>
           {h.type === "fixed" ? (
             fixedSlots.length > 0 ? (
               <ScheduleSlotList slots={fixedSlots} />
             ) : (
-              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">No fixed slots</p>
+              <p className="mt-1 text-sm text-palette-slate">No fixed slots</p>
             )
           ) : (
             <div className="mt-2">
@@ -96,11 +96,11 @@ function HabitListItem({ h, onEdit }: { h: HabitRow; onEdit: () => void }) {
               });
               window.location.reload();
             }}
-            className="text-sm text-zinc-600 dark:text-zinc-400"
+            className="text-sm text-palette-slate hover:text-palette-navy"
           >
             {h.active ? "Pause" : "Resume"}
           </button>
-          <button type="button" onClick={onEdit} className="text-sm text-zinc-600 dark:text-zinc-400">
+          <button type="button" onClick={onEdit} className="text-sm text-palette-slate hover:text-palette-navy">
             Edit
           </button>
           <button
@@ -142,7 +142,7 @@ export function HabitList({ habits }: { habits: HabitRow[] }) {
           setAdding(true);
           setEditing(null);
         }}
-        className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
+        className="rounded-lg bg-palette-sky px-4 py-2 text-sm font-medium text-palette-ink"
       >
         Add habit
       </button>
@@ -153,13 +153,13 @@ export function HabitList({ habits }: { habits: HabitRow[] }) {
 
       <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
         <section aria-labelledby="habits-fixed-heading">
-          <h2 id="habits-fixed-heading" className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+          <h2 id="habits-fixed-heading" className="text-lg font-medium text-palette-navy">
             Fixed habits
           </h2>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Specific days and times</p>
+          <p className="mt-1 text-xs text-palette-slate">Specific days and times</p>
           <ul className="mt-4 space-y-2">
             {fixed.length === 0 ? (
-              <li className="rounded-xl border border-dashed border-zinc-300 px-4 py-6 text-center text-sm text-zinc-500 dark:border-zinc-600 dark:text-zinc-400">
+              <li className="rounded-card border border-dashed border-palette-card-border bg-palette-card-bg/80 px-4 py-6 text-center text-sm text-palette-slate">
                 No fixed habits yet
               </li>
             ) : (
@@ -178,13 +178,13 @@ export function HabitList({ habits }: { habits: HabitRow[] }) {
         </section>
 
         <section aria-labelledby="habits-flexible-heading">
-          <h2 id="habits-flexible-heading" className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+          <h2 id="habits-flexible-heading" className="text-lg font-medium text-palette-navy">
             Flexible habits
           </h2>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Duration-based weekly targets</p>
+          <p className="mt-1 text-xs text-palette-slate">Duration-based weekly targets</p>
           <ul className="mt-4 space-y-2">
             {flexible.length === 0 ? (
-              <li className="rounded-xl border border-dashed border-zinc-300 px-4 py-6 text-center text-sm text-zinc-500 dark:border-zinc-600 dark:text-zinc-400">
+              <li className="rounded-card border border-dashed border-palette-card-border bg-palette-card-bg/80 px-4 py-6 text-center text-sm text-palette-slate">
                 No flexible habits yet
               </li>
             ) : (

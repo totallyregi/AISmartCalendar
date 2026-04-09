@@ -94,43 +94,43 @@ export function ClassForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">
+    <form onSubmit={handleSubmit} className="ds-card p-4">
+      <h3 className="font-medium text-palette-navy">
         {item ? "Edit class" : "New class"}
       </h3>
 
-      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Class code</label>
+          <label className="block text-sm font-medium text-palette-navy">Class code</label>
           <input
             value={classCode}
             onChange={(e) => setClassCode(e.target.value)}
             placeholder="e.g. CS 101"
             required
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800"
+            className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Class name</label>
+          <label className="block text-sm font-medium text-palette-navy">Class name</label>
           <input
             value={className}
             onChange={(e) => setClassName(e.target.value)}
             placeholder="e.g. Intro to Programming"
             required
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800"
+            className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy"
           />
         </div>
       </div>
 
       <div className="mt-4 space-y-3">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Meeting times (15-minute steps)</p>
+          <p className="text-sm font-medium text-palette-navy">Meeting times (15-minute steps)</p>
           <button
             type="button"
             onClick={addMeeting}
-            className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            className="text-sm font-medium text-palette-sky hover:text-palette-navy"
           >
             + Add slot
           </button>
@@ -139,10 +139,10 @@ export function ClassForm({
         {meetings.map((m, i) => (
           <div
             key={i}
-            className="flex flex-wrap items-end gap-2 rounded-lg border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-800/50"
+            className="flex flex-wrap items-end gap-2 rounded-lg border border-palette-card-border bg-palette-cream/40 p-3"
           >
             <div className="min-w-[9.5rem] flex-1">
-              <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Day</label>
+              <label className="mb-1 block text-xs font-medium text-palette-slate">Day</label>
               <select
                 value={m.day_of_week < 0 ? "" : String(m.day_of_week)}
                 onChange={(e) => {
@@ -150,7 +150,7 @@ export function ClassForm({
                   updateMeeting(i, { day_of_week: v === "" ? -1 : Number(v) });
                 }}
                 required
-                className="w-full rounded-md border border-zinc-300 px-2 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                className="w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-2 py-2 text-sm text-palette-navy"
               >
                 <option value="" disabled>
                   Day
@@ -163,7 +163,7 @@ export function ClassForm({
               </select>
             </div>
             <div className="min-w-[10rem] flex-1">
-              <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Start</label>
+              <label className="mb-1 block text-xs font-medium text-palette-slate">Start</label>
               <TimePicker12h
                 idPrefix={`class-${i}-s`}
                 minuteStep={15}
@@ -172,7 +172,7 @@ export function ClassForm({
               />
             </div>
             <div className="min-w-[10rem] flex-1">
-              <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">End</label>
+              <label className="mb-1 block text-xs font-medium text-palette-slate">End</label>
               <TimePicker12h
                 idPrefix={`class-${i}-e`}
                 minuteStep={15}
@@ -183,7 +183,7 @@ export function ClassForm({
             <button
               type="button"
               onClick={() => removeMeeting(i)}
-              className="shrink-0 rounded-md border border-zinc-300 px-3 py-2 text-sm text-red-600 dark:border-zinc-600 dark:text-red-400"
+              className="shrink-0 rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-sm text-red-600 hover:bg-palette-hover"
             >
               Remove
             </button>
@@ -192,10 +192,10 @@ export function ClassForm({
       </div>
 
       <div className="mt-4 flex gap-2">
-        <button type="submit" disabled={loading} className="rounded bg-zinc-900 px-4 py-2 text-sm text-white dark:bg-zinc-100 dark:text-zinc-900">
+        <button type="submit" disabled={loading} className="rounded-lg bg-palette-sky px-4 py-2 text-sm font-medium text-palette-ink disabled:opacity-60">
           {loading ? "Saving..." : item ? "Update" : "Add class"}
         </button>
-        <button type="button" onClick={onClose} className="rounded border border-zinc-300 px-4 py-2 text-sm dark:border-zinc-600">
+        <button type="button" onClick={onClose} className="rounded-lg border border-palette-card-border bg-palette-card-bg px-4 py-2 text-sm text-palette-navy hover:bg-palette-hover">
           Cancel
         </button>
       </div>

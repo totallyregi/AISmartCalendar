@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { DEFAULT_USER_TIMEZONE, WEEKDAY_FULL, formatTimeHhmmssTo12h } from "@/lib/datetimeDisplay";
+import { AppearanceTheme } from "@/components/AppearanceTheme";
 import { TimePicker12h } from "@/components/TimePicker12h";
 import { createClient } from "@/lib/supabase/client";
 
@@ -159,36 +160,38 @@ export default function PreferencesPage() {
   return (
     <div className="space-y-6 animate-in">
       <div>
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Preferences</h1>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">Customize how AI distributes assignment work when generating suggestions.</p>
+        <h1 className="text-2xl font-medium text-palette-navy">Preferences</h1>
+        <p className="text-sm text-palette-slate">Customize how AI distributes assignment work when generating suggestions.</p>
       </div>
 
-      <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Daily workload limits</h2>
+      <AppearanceTheme />
+
+      <div className="ds-card p-4 sm:p-5">
+        <h2 className="text-sm font-medium text-palette-navy">Daily workload limits</h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <label className="text-sm text-zinc-700 dark:text-zinc-300">Min daily hours
-            <input type="number" min={0} step={0.25} value={pref.min_daily_minutes / 60} onChange={(e) => setPref((p) => ({ ...p, min_daily_minutes: Math.round(Number(e.target.value) * 60) }))} className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800" />
+          <label className="text-sm font-medium text-palette-navy">Min daily hours
+            <input type="number" min={0} step={0.25} value={pref.min_daily_minutes / 60} onChange={(e) => setPref((p) => ({ ...p, min_daily_minutes: Math.round(Number(e.target.value) * 60) }))} className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 font-normal text-palette-navy" />
           </label>
-          <label className="text-sm text-zinc-700 dark:text-zinc-300">Preferred daily hours
-            <input type="number" min={0} step={0.25} value={pref.preferred_daily_minutes / 60} onChange={(e) => setPref((p) => ({ ...p, preferred_daily_minutes: Math.round(Number(e.target.value) * 60) }))} className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800" />
+          <label className="text-sm font-medium text-palette-navy">Preferred daily hours
+            <input type="number" min={0} step={0.25} value={pref.preferred_daily_minutes / 60} onChange={(e) => setPref((p) => ({ ...p, preferred_daily_minutes: Math.round(Number(e.target.value) * 60) }))} className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 font-normal text-palette-navy" />
           </label>
-          <label className="text-sm text-zinc-700 dark:text-zinc-300">Max daily hours
-            <input type="number" min={0.25} step={0.25} value={pref.max_daily_minutes / 60} onChange={(e) => setPref((p) => ({ ...p, max_daily_minutes: Math.round(Number(e.target.value) * 60) }))} className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800" />
+          <label className="text-sm font-medium text-palette-navy">Max daily hours
+            <input type="number" min={0.25} step={0.25} value={pref.max_daily_minutes / 60} onChange={(e) => setPref((p) => ({ ...p, max_daily_minutes: Math.round(Number(e.target.value) * 60) }))} className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 font-normal text-palette-navy" />
           </label>
-          <label className="text-sm text-zinc-700 dark:text-zinc-300">Max consecutive hours
-            <input type="number" min={0.25} step={0.25} value={pref.max_consecutive_minutes / 60} onChange={(e) => setPref((p) => ({ ...p, max_consecutive_minutes: Math.round(Number(e.target.value) * 60) }))} className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800" />
+          <label className="text-sm font-medium text-palette-navy">Max consecutive hours
+            <input type="number" min={0.25} step={0.25} value={pref.max_consecutive_minutes / 60} onChange={(e) => setPref((p) => ({ ...p, max_consecutive_minutes: Math.round(Number(e.target.value) * 60) }))} className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 font-normal text-palette-navy" />
           </label>
-          <label className="text-sm text-zinc-700 dark:text-zinc-300">Break minutes
-            <select value={pref.break_minutes} onChange={(e) => setPref((p) => ({ ...p, break_minutes: Number(e.target.value) }))} className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">
+          <label className="text-sm font-medium text-palette-navy">Break minutes
+            <select value={pref.break_minutes} onChange={(e) => setPref((p) => ({ ...p, break_minutes: Number(e.target.value) }))} className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 font-normal text-palette-navy">
               {[0, 15, 30, 45, 60, 75, 90].map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
           </label>
-          <label className="text-sm text-zinc-700 dark:text-zinc-300">Timezone
+          <label className="text-sm font-medium text-palette-navy">Timezone
             <div className="mt-1 flex gap-2">
               <select
                 value={pref.timezone}
                 onChange={(e) => setPref((p) => ({ ...p, timezone: e.target.value }))}
-                className="w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800"
+                className="w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 font-normal text-palette-navy"
               >
                 {TIMEZONES.map((tz) => (
                   <option key={tz.value} value={tz.value}>
@@ -199,7 +202,7 @@ export default function PreferencesPage() {
               <button
                 type="button"
                 onClick={() => setPref((p) => ({ ...p, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || DEFAULT_USER_TIMEZONE }))}
-                className="rounded border border-zinc-300 px-3 py-2 text-xs dark:border-zinc-600"
+                className="rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-xs font-medium text-palette-navy hover:bg-palette-hover"
               >
                 Detect
               </button>
@@ -208,7 +211,7 @@ export default function PreferencesPage() {
         </div>
 
         <div className="mt-4">
-          <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Preferred work days</p>
+          <p className="text-sm font-medium text-palette-navy">Preferred work days</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {WEEKDAY_FULL.map((d, idx) => {
               const selected = pref.default_apply_days.includes(idx);
@@ -220,7 +223,7 @@ export default function PreferencesPage() {
                     ...p,
                     default_apply_days: selected ? p.default_apply_days.filter((x) => x !== idx) : [...p.default_apply_days, idx].sort((a, b) => a - b),
                   }))}
-                  className={`rounded px-2.5 py-1 text-xs sm:text-sm ${selected ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : "border border-zinc-300 text-zinc-700 dark:border-zinc-600 dark:text-zinc-300"}`}
+                  className={`rounded-lg px-2.5 py-1 text-xs sm:text-sm ${selected ? "bg-palette-sky font-medium text-palette-ink" : "border border-palette-card-border bg-palette-card-bg text-palette-slate hover:bg-palette-hover"}`}
                 >
                   {d}
                 </button>
@@ -230,23 +233,23 @@ export default function PreferencesPage() {
         </div>
 
         <div className="mt-4 flex justify-end">
-          <button type="button" onClick={savePreference} disabled={loading} className="rounded bg-zinc-900 px-4 py-2 text-sm text-white disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900">
+          <button type="button" onClick={savePreference} disabled={loading} className="rounded-lg bg-palette-sky px-4 py-2 text-sm font-medium text-palette-ink disabled:opacity-60">
             Save preferences
           </button>
         </div>
       </div>
 
-      <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="ds-card p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Preferred work windows</h2>
-            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Add your available work windows for each day.</p>
+            <h2 className="text-sm font-medium text-palette-navy">Preferred work windows</h2>
+            <p className="mt-1 text-xs text-palette-slate">Add your available work windows for each day.</p>
           </div>
           {!showAddWindowForm && (
             <button
               type="button"
               onClick={() => setShowAddWindowForm(true)}
-              className="shrink-0 rounded border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-800 dark:border-zinc-600 dark:text-zinc-200"
+              className="shrink-0 rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-1.5 text-sm font-medium text-palette-navy hover:bg-palette-hover"
             >
               Add work window
             </button>
@@ -254,9 +257,9 @@ export default function PreferencesPage() {
         </div>
 
         {showAddWindowForm && (
-          <div className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-700 dark:bg-zinc-950/40">
+          <div className="mt-3 rounded-lg border border-palette-card-border bg-palette-cream/50 p-3">
             <div className="grid gap-2 sm:grid-cols-4">
-              <select value={newDay === "" ? "" : String(newDay)} onChange={(e) => setNewDay(e.target.value === "" ? "" : Number(e.target.value))} className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800">
+              <select value={newDay === "" ? "" : String(newDay)} onChange={(e) => setNewDay(e.target.value === "" ? "" : Number(e.target.value))} className="rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy">
                 <option value="" disabled>
                   Day
                 </option>
@@ -267,21 +270,21 @@ export default function PreferencesPage() {
                 ))}
               </select>
               <div className="flex flex-col gap-1">
-                <span className="text-xs text-zinc-500 dark:text-zinc-400">Start</span>
+                <span className="text-xs font-medium text-palette-slate">Start</span>
                 <TimePicker12h idPrefix="pref-win-s" minuteStep={15} value={newStart} onChange={setNewStart} />
               </div>
               <div className="flex flex-col gap-1">
-                <span className="text-xs text-zinc-500 dark:text-zinc-400">End</span>
+                <span className="text-xs font-medium text-palette-slate">End</span>
                 <TimePicker12h idPrefix="pref-win-e" minuteStep={15} value={newEnd} onChange={setNewEnd} />
               </div>
               <div className="flex flex-col justify-end gap-2 sm:flex-row sm:items-end">
-                <button type="button" onClick={addWindow} disabled={loading} className="rounded bg-zinc-900 px-3 py-2 text-sm text-white disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900">
+                <button type="button" onClick={addWindow} disabled={loading} className="rounded-lg bg-palette-sky px-3 py-2 text-sm font-medium text-palette-ink disabled:opacity-60">
                   Add window
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAddWindowForm(false)}
-                  className="rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600"
+                  className="rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-sm text-palette-navy hover:bg-palette-hover"
                 >
                   Cancel
                 </button>
@@ -294,18 +297,18 @@ export default function PreferencesPage() {
           {WEEKDAY_FULL.map((d, idx) => {
             const rows = grouped[idx] ?? [];
             return (
-              <div key={d} className="rounded border border-zinc-200 p-2 dark:border-zinc-700">
-                <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">{d}</p>
+              <div key={d} className="rounded-lg border border-palette-card-border bg-palette-card-bg p-3">
+                <p className="text-xs font-medium text-palette-navy">{d}</p>
                 {rows.length === 0 ? (
-                  <p className="mt-1 text-xs text-zinc-400">No windows</p>
+                  <p className="mt-1 text-xs text-palette-slate">No windows</p>
                 ) : (
                   <ul className="mt-1 space-y-1">
                     {rows.map((r) => (
-                      <li key={r.id} className="flex items-center justify-between text-xs text-zinc-600 dark:text-zinc-300">
+                      <li key={r.id} className="flex items-center justify-between text-xs text-palette-slate">
                         <span>
                           {formatTimeHhmmssTo12h(r.start_time)} – {formatTimeHhmmssTo12h(r.end_time)}
                         </span>
-                        <button type="button" onClick={() => removeWindow(r.id)} className="text-red-600 dark:text-red-400">Delete</button>
+                        <button type="button" onClick={() => removeWindow(r.id)} className="font-medium text-red-600 hover:text-red-700">Delete</button>
                       </li>
                     ))}
                   </ul>
@@ -316,8 +319,8 @@ export default function PreferencesPage() {
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-      {message && <p className="text-sm text-emerald-700 dark:text-emerald-400">{message}</p>}
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      {message && <p className="text-sm font-medium text-palette-green">{message}</p>}
     </div>
   );
 }

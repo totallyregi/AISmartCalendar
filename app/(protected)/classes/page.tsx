@@ -13,10 +13,10 @@ export default async function ClassesPage() {
 
   return (
     <div className="space-y-6 animate-in">
-      <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Classes</h1>
+      <h1 className="text-2xl font-medium text-palette-navy">Classes</h1>
       <ClassList classes={classes} />
       {classes.length === 0 && (
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+        <p className="text-sm text-palette-slate">
           Add class code, class name, and weekly meeting times in 15-minute intervals.
         </p>
       )}
