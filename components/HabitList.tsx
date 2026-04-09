@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useConfirm } from "@/components/ConfirmDialogProvider";
 import { WEEKDAY_FULL, compareDayTimeSlots } from "@/lib/datetimeDisplay";
 import { HabitForm } from "./HabitForm";
 import { ScheduleSlotList } from "./ScheduleSlotList";
@@ -64,6 +65,7 @@ function FlexibleHabitMeta({ h, flex }: { h: HabitRow; flex: Record<string, unkn
 }
 
 function HabitListItem({ h, onEdit }: { h: HabitRow; onEdit: () => void }) {
+  const confirm = useConfirm();
   const flexRules = h.habit_flexible_rules as unknown;
   const flex = Array.isArray(flexRules) ? flexRules[0] : flexRules;
   const fixedSlots = [...(h.habit_fixed_slots ?? [])].sort(compareDayTimeSlots);
@@ -106,7 +108,13 @@ function HabitListItem({ h, onEdit }: { h: HabitRow; onEdit: () => void }) {
           <button
             type="button"
             onClick={async () => {
-              if (!confirm("Delete this habit?")) return;
+              const ok = await confirm({
+                title: "Delete habit?",
+                message: "Delete this habit? This cannot be undone.",
+                confirmLabel: "Delete",
+                tone: "danger",
+              });
+              if (!ok) return;
               await fetch(`/api/habits/${h.id}`, { method: "DELETE" });
               window.location.reload();
             }}

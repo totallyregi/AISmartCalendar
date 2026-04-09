@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useConfirm } from "@/components/ConfirmDialogProvider";
 import type { SchedulerMode } from "@/lib/types";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -16,6 +17,20 @@ function formatWeekLabel(weekStart: string, weekEnd?: string) {
   const end = weekEnd ? new Date(`${weekEnd}T00:00:00`) : addDays(start, 6);
   const fmt = new Intl.DateTimeFormat("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   return `${fmt.format(start)} to ${fmt.format(end)}`;
+}
+
+/**
+ * Formats `assignmentMinutes` from the generate API (integer sum of assignment block lengths).
+ * Uses integer division only — never via decimal hours (which misreads, e.g. 105 min → “1.8h” → 108 min).
+ */
+function formatAssignmentDuration(totalMinutes: number): string {
+  const raw = Number(totalMinutes);
+  const n = Number.isFinite(raw) ? Math.max(0, Math.trunc(raw)) : 0;
+  const h = Math.floor(n / 60);
+  const m = n % 60;
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
+  return `${m}m`;
 }
 
 type PlannerStatus = {
@@ -51,6 +66,7 @@ export function DashboardPlanner({
   hasCurrentPlan: boolean;
 }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [generateTargetWeek, setGenerateTargetWeek] = useState(currentWeek);
   const [mode, setMode] = useState<SchedulerMode>("relaxed");
   const [loading, setLoading] = useState(false);
@@ -165,8 +181,10 @@ export function DashboardPlanner({
       setError(data.error ?? "Generate failed");
       return;
     }
-    const hours = Number(data.assignmentMinutes ?? 0) / 60;
-    setMessage(`Generated ${data.blocks ?? 0} suggested blocks (${hours.toFixed(1)}h assignment time) for week ${data.weekStart} in ${data.mode ?? mode} mode`);
+    const assignmentTimeLabel = formatAssignmentDuration(Number(data.assignmentMinutes ?? 0));
+    setMessage(
+      `Generated ${data.blocks ?? 0} suggested blocks (${assignmentTimeLabel} assignment time) for week ${data.weekStart} in ${data.mode ?? mode} mode`
+    );
     const unsched = Array.isArray(data.unscheduled) ? data.unscheduled : [];
     if (unsched.length > 0) {
       const detail = unsched
@@ -185,18 +203,20 @@ export function DashboardPlanner({
       unscheduled: unsched,
       warning: typeof data.warning === "string" ? data.warning : undefined,
     };
-    await fetchInsights(summary);
     await syncGenerateTargetFromServer();
     router.refresh();
+    void fetchInsights(summary);
   }
 
   async function resetSuggestions() {
-    if (
-      !confirm(
-        "Remove all pending (unapplied) AI draft blocks? Weeks you already applied to your main calendar are not undone; generation progress for those weeks stays in place."
-      )
-    )
-      return;
+    const ok = await confirm({
+      title: "Reset AI draft suggestions?",
+      message:
+        "Remove all pending (unapplied) AI draft blocks? Weeks you already applied to your main calendar are not undone; generation progress for those weeks stays in place.",
+      confirmLabel: "Reset",
+      tone: "danger",
+    });
+    if (!ok) return;
     setLoading(true);
     setError(null);
     setMessage(null);
@@ -232,6 +252,9 @@ export function DashboardPlanner({
       return;
     }
     setMessage(`Applied ${data.applied ?? 0} AI events to your main Calendar`);
+    setInsights([]);
+    setInsightsFetchError(null);
+    setInsightsLoading(false);
     await syncGenerateTargetFromServer();
     router.refresh();
   }
@@ -321,26 +344,33 @@ export function DashboardPlanner({
         </div>
       </section>
 
-      {(insightsLoading || insights.length > 0 || insightsFetchError) && (
-        <section
+      {(message || insightsLoading || insights.length > 0 || insightsFetchError) && (
+        <div
           className="rounded-xl border border-palette-green/35 bg-palette-green/10 p-4"
           aria-busy={insightsLoading}
           aria-live="polite"
         >
-          <p className="text-xs font-semibold uppercase tracking-wide text-palette-navy">Insights</p>
-          <p className="mt-0.5 text-xs text-palette-slate">Suggestions based on this generation — the calendar was not changed by this summary.</p>
-          {insightsLoading ? (
-            <p className="mt-3 text-sm text-palette-slate">Generating insights…</p>
-          ) : insightsFetchError ? (
-            <p className="mt-3 text-sm text-red-600">{insightsFetchError}</p>
-          ) : (
-            <ul className="mt-3 list-inside list-disc space-y-2 text-sm leading-relaxed text-palette-slate marker:text-palette-green">
-              {insights.map((line, i) => (
-                <li key={i}>{line}</li>
-              ))}
-            </ul>
+          {message && <p className="text-sm font-medium text-palette-navy">{message}</p>}
+          {(insightsLoading || insights.length > 0 || insightsFetchError) && (
+            <div className={message ? "mt-4 border-t border-palette-green/30 pt-4" : ""}>
+              <p className="text-xs font-semibold uppercase tracking-wide text-palette-navy">Insights</p>
+              <p className="mt-0.5 text-xs text-palette-slate">
+                Suggestions based on this generation — the calendar was not changed by this summary.
+              </p>
+              {insightsLoading ? (
+                <p className="mt-3 text-sm text-palette-slate">Generating insights…</p>
+              ) : insightsFetchError ? (
+                <p className="mt-3 text-sm text-red-600">{insightsFetchError}</p>
+              ) : (
+                <ul className="mt-3 list-inside list-disc space-y-2 text-sm leading-relaxed text-palette-slate marker:text-palette-green">
+                  {insights.map((line, i) => (
+                    <li key={i}>{line}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
-        </section>
+        </div>
       )}
 
       <section className={inner}>
@@ -393,7 +423,6 @@ export function DashboardPlanner({
         <p className="text-sm text-amber-800/90">You must generate the current week first before future weeks.</p>
       )}
       {error && <p className="text-sm text-red-700">{error}</p>}
-      {message && <p className="text-sm font-medium text-palette-navy">{message}</p>}
       {scheduleWarning && (
         <p className="rounded-xl border border-amber-200/80 bg-amber-50/90 p-3 text-sm text-amber-950">{scheduleWarning}</p>
       )}

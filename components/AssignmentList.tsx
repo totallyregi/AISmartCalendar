@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ConfirmDialogProvider";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Assignment } from "@/lib/types";
@@ -15,6 +16,7 @@ export function AssignmentList({
   classId: string;
   assignments: Assignment[];
 }) {
+  const confirm = useConfirm();
   const [editing, setEditing] = useState<Assignment | null>(null);
   const [adding, setAdding] = useState(false);
   const [tab, setTab] = useState<AssignmentTab>("incomplete");
@@ -126,7 +128,12 @@ export function AssignmentList({
                     <button
                       type="button"
                       onClick={async () => {
-                        const ok = confirm("Mark this assignment as done? Future assignment events from now will be removed.");
+                        const ok = await confirm({
+                          title: "Mark assignment done?",
+                          message:
+                            "Mark this assignment as done? Future assignment events from now will be removed from your schedule.",
+                          confirmLabel: "Mark done",
+                        });
                         if (!ok) return;
                         await fetch(`/api/assignments/${a.id}`, {
                           method: "PUT",
@@ -152,7 +159,13 @@ export function AssignmentList({
                     <button
                       type="button"
                       onClick={async () => {
-                        if (!confirm("Delete this assignment?")) return;
+                        const delOk = await confirm({
+                          title: "Delete assignment?",
+                          message: "Delete this assignment? This cannot be undone.",
+                          confirmLabel: "Delete",
+                          tone: "danger",
+                        });
+                        if (!delOk) return;
                         await fetch(`/api/assignments/${a.id}`, { method: "DELETE" });
                         window.location.reload();
                       }}
@@ -210,7 +223,13 @@ export function AssignmentList({
                     <button
                       type="button"
                       onClick={async () => {
-                        if (!confirm("Delete this assignment?")) return;
+                        const delOk = await confirm({
+                          title: "Delete assignment?",
+                          message: "Delete this assignment? This cannot be undone.",
+                          confirmLabel: "Delete",
+                          tone: "danger",
+                        });
+                        if (!delOk) return;
                         await fetch(`/api/assignments/${a.id}`, { method: "DELETE" });
                         window.location.reload();
                       }}

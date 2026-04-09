@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ConfirmDialogProvider";
 import { useEffect, useMemo, useState } from "react";
 import type { Assignment } from "@/lib/types";
 import { formatDueDateTime } from "@/lib/datetimeDisplay";
@@ -34,6 +35,7 @@ function sortAssignments(items: AssignmentWithClass[], sortBy: SortKey) {
 type TodoTab = "incomplete" | "completed";
 
 export function TodoAssignmentBoard({ assignments }: { assignments: AssignmentWithClass[] }) {
+  const confirm = useConfirm();
   const [editing, setEditing] = useState<AssignmentWithClass | null>(null);
   const [sortBy, setSortBy] = useState<SortKey>("due_asc");
   const [tab, setTab] = useState<TodoTab>("incomplete");
@@ -132,7 +134,12 @@ export function TodoAssignmentBoard({ assignments }: { assignments: AssignmentWi
                     <button
                       type="button"
                       onClick={async () => {
-                        const ok = confirm("Mark this assignment as done? Future assignment events from now will be removed.");
+                        const ok = await confirm({
+                          title: "Mark assignment done?",
+                          message:
+                            "Mark this assignment as done? Future assignment events from now will be removed from your schedule.",
+                          confirmLabel: "Mark done",
+                        });
                         if (!ok) return;
                         await fetch(`/api/assignments/${a.id}`, {
                           method: "PUT",
@@ -151,7 +158,13 @@ export function TodoAssignmentBoard({ assignments }: { assignments: AssignmentWi
                     <button
                       type="button"
                       onClick={async () => {
-                        if (!confirm("Delete this assignment?")) return;
+                        const delOk = await confirm({
+                          title: "Delete assignment?",
+                          message: "Delete this assignment? This cannot be undone.",
+                          confirmLabel: "Delete",
+                          tone: "danger",
+                        });
+                        if (!delOk) return;
                         await fetch(`/api/assignments/${a.id}`, { method: "DELETE" });
                         window.location.reload();
                       }}
@@ -205,7 +218,13 @@ export function TodoAssignmentBoard({ assignments }: { assignments: AssignmentWi
                     <button
                       type="button"
                       onClick={async () => {
-                        if (!confirm("Delete this assignment?")) return;
+                        const delOk = await confirm({
+                          title: "Delete assignment?",
+                          message: "Delete this assignment? This cannot be undone.",
+                          confirmLabel: "Delete",
+                          tone: "danger",
+                        });
+                        if (!delOk) return;
                         await fetch(`/api/assignments/${a.id}`, { method: "DELETE" });
                         window.location.reload();
                       }}

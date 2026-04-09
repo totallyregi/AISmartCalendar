@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useConfirm } from "@/components/ConfirmDialogProvider";
 import { EventEditModal } from "@/components/EventEditModal";
 
 type Event = {
@@ -34,6 +35,7 @@ const sourceCls: Record<Event["source"], string> = {
 
 export function WeekTimeline({ date, events, mode, timeZone = "UTC" }: { date: string; events: Event[]; mode: "main" | "ai"; timeZone?: string }) {
   const [editing, setEditing] = useState<Event | null>(null);
+  const confirm = useConfirm();
 
   function localMinutesOfDay(iso: string) {
     const parts = new Intl.DateTimeFormat("en-US", {
@@ -55,31 +57,61 @@ export function WeekTimeline({ date, events, mode, timeZone = "UTC" }: { date: s
   });
 
   async function deleteDraft(e: Event) {
-    if (!confirm("Delete this AI suggestion?")) return;
+    const ok = await confirm({
+      title: "Delete AI suggestion?",
+      message: "Delete this AI suggestion?",
+      confirmLabel: "Delete",
+      tone: "danger",
+    });
+    if (!ok) return;
     await fetch(`/api/ai-draft-blocks/${e.id}`, { method: "DELETE" });
     window.location.reload();
   }
 
   async function deleteGeneratedMain(e: Event) {
-    if (!confirm("Delete this generated event from Calendar?")) return;
+    const ok = await confirm({
+      title: "Remove from calendar?",
+      message: "Delete this generated event from Calendar?",
+      confirmLabel: "Delete",
+      tone: "danger",
+    });
+    if (!ok) return;
     await fetch(`/api/weekly-plan-blocks/${e.id}`, { method: "DELETE" });
     window.location.reload();
   }
 
   async function deleteFixedHabit(e: Event) {
-    if (!confirm("Delete this fixed habit slot?")) return;
+    const ok = await confirm({
+      title: "Delete habit slot?",
+      message: "Delete this fixed habit slot?",
+      confirmLabel: "Delete",
+      tone: "danger",
+    });
+    if (!ok) return;
     await fetch(`/api/habit-fixed-slots/${e.id}`, { method: "DELETE" });
     window.location.reload();
   }
 
   async function deleteExternal(e: Event) {
-    if (!confirm("Delete this imported event from app calendar? (Sync may add it back)")) return;
+    const ok = await confirm({
+      title: "Delete imported event?",
+      message: "Delete this imported event from app calendar? Sync may add it back.",
+      confirmLabel: "Delete",
+      tone: "danger",
+    });
+    if (!ok) return;
     await fetch(`/api/external-events/${e.id}`, { method: "DELETE" });
     window.location.reload();
   }
 
   async function deletePersonal(e: Event) {
-    if (!confirm("Delete personal event?")) return;
+    const ok = await confirm({
+      title: "Delete event?",
+      message: "Delete this personal event?",
+      confirmLabel: "Delete",
+      tone: "danger",
+    });
+    if (!ok) return;
     await fetch(`/api/user-events/${e.id}`, { method: "DELETE" });
     window.location.reload();
   }

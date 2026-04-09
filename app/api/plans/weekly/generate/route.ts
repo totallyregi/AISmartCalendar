@@ -534,9 +534,11 @@ export async function POST(request: Request) {
     if (draftErr) return NextResponse.json({ error: draftErr.message }, { status: 500 });
   }
 
-  const assignmentMinutes = mergedBlocksFiltered
-    .filter((b) => b.block_type === "assignment")
-    .reduce((sum, b) => sum + minutesBetween(new Date(b.starts_at), new Date(b.ends_at)), 0);
+  const assignmentMinutes = Math.round(
+    mergedBlocksFiltered
+      .filter((b) => b.block_type === "assignment")
+      .reduce((sum, b) => sum + minutesBetween(new Date(b.starts_at), new Date(b.ends_at)), 0)
+  );
 
   // Week is [weekStartDate .. weekEndDate) in date keys; weekEndDate is the first day *after* the week.
   // Only warn about unscheduled work when the assignment is actually due by end of this generated week

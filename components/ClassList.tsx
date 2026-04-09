@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ConfirmDialogProvider";
 import Link from "next/link";
 import { useState } from "react";
 import type { ClassSection } from "@/lib/types";
@@ -7,6 +8,7 @@ import { ClassForm } from "./ClassForm";
 import { ScheduleSlotList } from "./ScheduleSlotList";
 
 export function ClassList({ classes }: { classes: ClassSection[] }) {
+  const confirm = useConfirm();
   const [editing, setEditing] = useState<ClassSection | null>(null);
   const [adding, setAdding] = useState(false);
 
@@ -51,7 +53,13 @@ export function ClassList({ classes }: { classes: ClassSection[] }) {
                 <button
                   type="button"
                   onClick={async () => {
-                    if (!confirm("Delete this class?")) return;
+                    const ok = await confirm({
+                      title: "Delete class?",
+                      message: "Delete this class and its meetings? Assignments under this class will be removed.",
+                      confirmLabel: "Delete",
+                      tone: "danger",
+                    });
+                    if (!ok) return;
                     await fetch(`/api/classes/${c.id}`, { method: "DELETE" });
                     window.location.reload();
                   }}
