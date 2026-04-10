@@ -1,0 +1,124 @@
+"use client";
+
+import { useCallback } from "react";
+import { useConfirm } from "@/components/ConfirmDialogProvider";
+import type { CalendarTimelineEvent } from "@/lib/calendarTimelineEvent";
+
+export type CalendarTimelineActions = {
+  deleteDraft: (e: CalendarTimelineEvent) => Promise<void>;
+  deleteGeneratedMain: (e: CalendarTimelineEvent) => Promise<void>;
+  deleteFixedHabit: (e: CalendarTimelineEvent) => Promise<void>;
+  deleteExternal: (e: CalendarTimelineEvent) => Promise<void>;
+  deletePersonal: (e: CalendarTimelineEvent) => Promise<void>;
+  cancelClassForDate: (e: CalendarTimelineEvent) => Promise<void>;
+};
+
+/**
+ * Delete/cancel handlers shared by WeekTimeline and DayAgendaModal.
+ * `overrideDateYyyyMmDd` is the calendar day key (YYYY-MM-DD) for class cancel/override.
+ */
+export function useCalendarTimelineActions(overrideDateYyyyMmDd: string): CalendarTimelineActions {
+  const confirm = useConfirm();
+
+  const deleteDraft = useCallback(
+    async (e: CalendarTimelineEvent) => {
+      const ok = await confirm({
+        title: "Delete AI suggestion?",
+        message: "Delete this AI suggestion?",
+        confirmLabel: "Delete",
+        tone: "danger",
+      });
+      if (!ok) return;
+      await fetch(`/api/ai-draft-blocks/${e.id}`, { method: "DELETE" });
+      window.location.reload();
+    },
+    [confirm]
+  );
+
+  const deleteGeneratedMain = useCallback(
+    async (e: CalendarTimelineEvent) => {
+      const ok = await confirm({
+        title: "Remove from calendar?",
+        message: "Delete this generated event from Calendar?",
+        confirmLabel: "Delete",
+        tone: "danger",
+      });
+      if (!ok) return;
+      await fetch(`/api/weekly-plan-blocks/${e.id}`, { method: "DELETE" });
+      window.location.reload();
+    },
+    [confirm]
+  );
+
+  const deleteFixedHabit = useCallback(
+    async (e: CalendarTimelineEvent) => {
+      const ok = await confirm({
+        title: "Delete habit slot?",
+        message: "Delete this fixed habit slot?",
+        confirmLabel: "Delete",
+        tone: "danger",
+      });
+      if (!ok) return;
+      await fetch(`/api/habit-fixed-slots/${e.id}`, { method: "DELETE" });
+      window.location.reload();
+    },
+    [confirm]
+  );
+
+  const deleteExternal = useCallback(
+    async (e: CalendarTimelineEvent) => {
+      const ok = await confirm({
+        title: "Delete imported event?",
+        message: "Delete this imported event from app calendar? Sync may add it back.",
+        confirmLabel: "Delete",
+        tone: "danger",
+      });
+      if (!ok) return;
+      await fetch(`/api/external-events/${e.id}`, { method: "DELETE" });
+      window.location.reload();
+    },
+    [confirm]
+  );
+
+  const deletePersonal = useCallback(
+    async (e: CalendarTimelineEvent) => {
+      const ok = await confirm({
+        title: "Delete event?",
+        message: "Delete this personal event?",
+        confirmLabel: "Delete",
+        tone: "danger",
+      });
+      if (!ok) return;
+      await fetch(`/api/user-events/${e.id}`, { method: "DELETE" });
+      window.location.reload();
+    },
+    [confirm]
+  );
+
+  const cancelClassForDate = useCallback(
+    async (e: CalendarTimelineEvent) => {
+      if (!e.class_meeting_id || !e.class_id) return;
+      await fetch(`/api/classes/overrides`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          class_meeting_id: e.class_meeting_id,
+          class_id: e.class_id,
+          override_date: overrideDateYyyyMmDd,
+          canceled: true,
+        }),
+      });
+      window.location.reload();
+    },
+    [overrideDateYyyyMmDd]
+  );
+
+  return {
+    deleteDraft,
+    deleteGeneratedMain,
+    deleteFixedHabit,
+    deleteExternal,
+    deletePersonal,
+    cancelClassForDate,
+  };
+}

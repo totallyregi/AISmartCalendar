@@ -1,22 +1,13 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { zonedDateTimeToUtc } from "@/lib/timezone";
+import type { CalendarTimelineEvent } from "@/lib/calendarTimelineEvent";
+import { EventEditModal } from "@/components/EventEditModal";
+import { useCalendarTimelineActions } from "@/hooks/useCalendarTimelineActions";
+import { TimelineEventActionButtons } from "@/components/TimelineEventActionButtons";
 
-export type DayAgendaEvent = {
-  id: string;
-  starts_at: string;
-  ends_at: string;
-  title: string;
-  source:
-    | "external"
-    | "class"
-    | "fixed_habit"
-    | "flexible_habit"
-    | "assignment"
-    | "generated"
-    | "personal";
-};
+export type DayAgendaEvent = CalendarTimelineEvent;
 
 const DAY_MINUTES = 24 * 60;
 
@@ -83,15 +74,24 @@ export function DayAgendaModal({
   open,
   date,
   timeZone,
+  mode,
   events,
   onClose,
 }: {
   open: boolean;
   date: string;
   timeZone: string;
+  mode: "main" | "ai";
   events: DayAgendaEvent[];
   onClose: () => void;
 }) {
+  const [editing, setEditing] = useState<CalendarTimelineEvent | null>(null);
+  const actions = useCalendarTimelineActions(date);
+
+  useEffect(() => {
+    if (!open) setEditing(null);
+  }, [open, date]);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -203,17 +203,26 @@ export function DayAgendaModal({
                   {sorted.map((e, idx) => (
                     <li
                       key={`${e.id}-list-${idx}`}
-                      className="flex gap-3 rounded-xl border border-zinc-200/90 bg-white px-3.5 py-2.5 text-sm shadow-sm dark:border-zinc-600 dark:bg-zinc-900/80"
+                      className="flex flex-col gap-2 rounded-xl border border-zinc-200/90 bg-white px-3.5 py-2.5 text-sm shadow-sm dark:border-zinc-600 dark:bg-zinc-900/80"
                     >
-                      <span
-                        className={`mt-0.5 h-fit shrink-0 rounded-md px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${sourceCls[e.source]}`}
-                      >
-                        {e.source.replace(/_/g, " ")}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium leading-snug text-zinc-900 dark:text-zinc-100">{e.title}</p>
-                        <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{formatRange(e.starts_at, e.ends_at, timeZone)}</p>
+                      <div className="flex gap-3">
+                        <span
+                          className={`mt-0.5 h-fit shrink-0 rounded-md px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${sourceCls[e.source]}`}
+                        >
+                          {e.source.replace(/_/g, " ")}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium leading-snug text-zinc-900 dark:text-zinc-100">{e.title}</p>
+                          <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{formatRange(e.starts_at, e.ends_at, timeZone)}</p>
+                        </div>
                       </div>
+                      <TimelineEventActionButtons
+                        event={e}
+                        mode={mode}
+                        onEdit={() => setEditing(e)}
+                        actions={actions}
+                        variant="zinc"
+                      />
                     </li>
                   ))}
                 </ul>
@@ -222,6 +231,8 @@ export function DayAgendaModal({
           </div>
         </div>
       </div>
+
+      <EventEditModal open={!!editing} event={editing} mode={mode} timeZone={timeZone} onClose={() => setEditing(null)} />
     </div>
   );
 }

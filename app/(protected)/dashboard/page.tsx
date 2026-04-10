@@ -14,17 +14,7 @@ import {
   zonedDateKeyFromIso,
   zonedDateTimeToUtc,
 } from "@/lib/timezone";
-
-type TimelineEvent = {
-  id: string;
-  starts_at: string;
-  ends_at: string;
-  title: string;
-  source: "external" | "class" | "fixed_habit" | "flexible_habit" | "assignment" | "generated" | "personal";
-  class_meeting_id?: string;
-  class_id?: string;
-  fromWeeklyPlan?: boolean;
-};
+import type { CalendarTimelineEvent } from "@/lib/calendarTimelineEvent";
 
 type CalendarPreviewEvent = {
   starts_at: string;
@@ -79,7 +69,7 @@ export default async function DashboardPage({
   ]);
 
   const metaByDate: Record<string, CalendarDayMeta> = {};
-  const events: TimelineEvent[] = [];
+  const events: CalendarTimelineEvent[] = [];
   const overrideByMeetingDate = new Map<string, { canceled: boolean; start?: string; end?: string }>();
 
   (overrideRes.data ?? []).forEach((o) => {
@@ -234,13 +224,7 @@ export default async function DashboardPage({
         timeZone={timeZone}
         basePath="/dashboard"
         showGeneratedDots
-        monthAgendaEvents={events.map((e) => ({
-          id: e.id,
-          starts_at: e.starts_at,
-          ends_at: e.ends_at,
-          title: e.title,
-          source: e.source,
-        }))}
+        monthAgendaEvents={events}
       />
       <WeekTimeline date={selectedDate} events={selectedEvents} mode="ai" timeZone={timeZone} />
     </div>

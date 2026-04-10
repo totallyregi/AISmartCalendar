@@ -76,6 +76,8 @@ export function CalendarView({
     return monthAgendaEvents.filter((e) => zonedDateKeyFromIso(e.starts_at, timeZone) === agendaDate);
   }, [monthAgendaEvents, agendaDate, timeZone]);
 
+  const calendarMode = basePath === "/dashboard" ? "ai" : "main";
+
   function openDay(dateStr: string) {
     setAgendaDate(dateStr);
     setAgendaOpen(true);
@@ -232,6 +234,7 @@ export function CalendarView({
         open={agendaOpen && !!agendaDate}
         date={agendaDate ?? selectedDate}
         timeZone={timeZone}
+        mode={calendarMode}
         events={agendaForDay}
         onClose={() => {
           setAgendaOpen(false);

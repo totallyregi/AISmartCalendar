@@ -57,9 +57,11 @@ const defaultPref: Preference = {
 export default function PreferencesPage() {
   const [pref, setPref] = useState<Preference>(defaultPref);
   const [windows, setWindows] = useState<WindowRow[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [prefsSaving, setPrefsSaving] = useState(false);
+  const [windowBusy, setWindowBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [highlightWindowId, setHighlightWindowId] = useState<string | null>(null);
 
   const [newDay, setNewDay] = useState<number | "">("");
   const [newStart, setNewStart] = useState("09:00:00");
@@ -83,6 +85,14 @@ export default function PreferencesPage() {
     });
   }, []);
 
+  useEffect(() => {
+    if (!highlightWindowId) return;
+    const el = document.getElementById(`pref-work-window-${highlightWindowId}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    const t = window.setTimeout(() => setHighlightWindowId(null), 2800);
+    return () => window.clearTimeout(t);
+  }, [highlightWindowId]);
+
   const grouped = useMemo(() => {
     const out: Record<number, WindowRow[]> = {};
     for (const w of windows) {
@@ -93,7 +103,7 @@ export default function PreferencesPage() {
   }, [windows]);
 
   async function savePreference() {
-    setLoading(true);
+    setPrefsSaving(true);
     setMessage(null);
     setError(null);
 
@@ -103,7 +113,7 @@ export default function PreferencesPage() {
       body: JSON.stringify(pref),
     });
     const data = await res.json().catch(() => ({}));
-    setLoading(false);
+    setPrefsSaving(false);
     if (!res.ok) {
       setError(data.error ?? "Failed to save preferences");
       return;
@@ -117,7 +127,11 @@ export default function PreferencesPage() {
   }
 
   async function addWindow() {
-    setLoading(true);
+    if (newDay === "") {
+      setError("Choose a day for this work window.");
+      return;
+    }
+    setWindowBusy(true);
     setMessage(null);
     setError(null);
 
@@ -127,27 +141,37 @@ export default function PreferencesPage() {
       body: JSON.stringify({ day_of_week: newDay, start_time: newStart, end_time: newEnd }),
     });
     const data = await res.json().catch(() => ({}));
-    setLoading(false);
+    setWindowBusy(false);
     if (!res.ok) {
       setError(data.error ?? "Failed to add window");
       return;
     }
 
-    setWindows((prev) => [...prev, data]);
-    setMessage("Window added");
+    const row: WindowRow = {
+      id: String(data.id),
+      day_of_week: Number(data.day_of_week),
+      start_time: String(data.start_time),
+      end_time: String(data.end_time),
+      is_override: Boolean(data.is_override),
+    };
+    setWindows((prev) => [...prev, row]);
+    setHighlightWindowId(row.id);
+    setMessage(
+      `Added ${WEEKDAY_FULL[row.day_of_week]} window (${formatTimeHhmmssTo12h(row.start_time)} – ${formatTimeHhmmssTo12h(row.end_time)}).`
+    );
     setNewStart("09:00:00");
     setNewEnd("17:00:00");
     setShowAddWindowForm(false);
   }
 
   async function removeWindow(id: string) {
-    setLoading(true);
+    setWindowBusy(true);
     setMessage(null);
     setError(null);
 
     const res = await fetch(`/api/preferences/scheduler/windows?id=${id}`, { method: "DELETE" });
     const data = await res.json().catch(() => ({}));
-    setLoading(false);
+    setWindowBusy(false);
     if (!res.ok) {
       setError(data.error ?? "Failed to remove window");
       return;
@@ -233,8 +257,8 @@ export default function PreferencesPage() {
         </div>
 
         <div className="mt-4 flex justify-end">
-          <button type="button" onClick={savePreference} disabled={loading} className="rounded-lg bg-palette-sky px-4 py-2 text-sm font-medium text-palette-ink disabled:opacity-60">
-            Save preferences
+          <button type="button" onClick={savePreference} disabled={prefsSaving} className="rounded-lg bg-palette-sky px-4 py-2 text-sm font-medium text-palette-ink disabled:opacity-60">
+            {prefsSaving ? "Saving…" : "Save preferences"}
           </button>
         </div>
       </div>
@@ -278,13 +302,19 @@ export default function PreferencesPage() {
                 <TimePicker12h idPrefix="pref-win-e" minuteStep={15} value={newEnd} onChange={setNewEnd} />
               </div>
               <div className="flex flex-col justify-end gap-2 sm:flex-row sm:items-end">
-                <button type="button" onClick={addWindow} disabled={loading} className="rounded-lg bg-palette-sky px-3 py-2 text-sm font-medium text-palette-ink disabled:opacity-60">
-                  Add window
+                <button
+                  type="button"
+                  onClick={() => void addWindow()}
+                  disabled={windowBusy || newDay === ""}
+                  className="rounded-lg bg-palette-sky px-3 py-2 text-sm font-medium text-palette-ink disabled:opacity-60"
+                >
+                  {windowBusy ? "Adding…" : "Add window"}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAddWindowForm(false)}
-                  className="rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-sm text-palette-navy hover:bg-palette-hover"
+                  disabled={windowBusy}
+                  className="rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-sm text-palette-navy hover:bg-palette-hover disabled:opacity-60"
                 >
                   Cancel
                 </button>
@@ -304,11 +334,24 @@ export default function PreferencesPage() {
                 ) : (
                   <ul className="mt-1 space-y-1">
                     {rows.map((r) => (
-                      <li key={r.id} className="flex items-center justify-between text-xs text-palette-slate">
+                      <li
+                        key={r.id}
+                        id={`pref-work-window-${r.id}`}
+                        className={`flex items-center justify-between rounded-md px-1.5 py-0.5 text-xs text-palette-slate transition-[box-shadow] ${
+                          highlightWindowId === r.id ? "bg-palette-sky/15 ring-2 ring-palette-sky/80 ring-offset-1 ring-offset-palette-card-bg" : ""
+                        }`}
+                      >
                         <span>
                           {formatTimeHhmmssTo12h(r.start_time)} – {formatTimeHhmmssTo12h(r.end_time)}
                         </span>
-                        <button type="button" onClick={() => removeWindow(r.id)} className="font-medium text-red-600 hover:text-red-700">Delete</button>
+                        <button
+                          type="button"
+                          onClick={() => void removeWindow(r.id)}
+                          disabled={windowBusy}
+                          className="font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+                        >
+                          Delete
+                        </button>
                       </li>
                     ))}
                   </ul>

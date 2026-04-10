@@ -26,6 +26,7 @@ export function AssignmentForm({
   onClose,
   onSaved,
   className,
+  ariaTitleId,
 }: {
   assignment?: Assignment;
   classId: string;
@@ -33,6 +34,8 @@ export function AssignmentForm({
   onSaved: () => void;
   /** Extra classes for the form (e.g. inline under a list row). */
   className?: string;
+  /** When set (e.g. in a modal), labels the form for `aria-labelledby` on the dialog. */
+  ariaTitleId?: string;
 }) {
   const initDue = initialDueFromAssignment(assignment);
   const [name, setName] = useState(assignment?.name ?? "");
@@ -84,7 +87,7 @@ export function AssignmentForm({
       onSubmit={handleSubmit}
       className={["ds-card p-4", className].filter(Boolean).join(" ")}
     >
-      <h3 className="font-medium text-palette-navy">
+      <h3 id={ariaTitleId} className="font-medium text-palette-navy">
         {assignment ? "Edit assignment" : "New assignment"}
       </h3>
       <p className="mt-1 text-xs text-palette-slate">Class is locked to this class tab.</p>

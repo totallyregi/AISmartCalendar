@@ -22,7 +22,7 @@ export function Sidebar({
       .then((r) => r.json())
       .then((data) => setClasses(Array.isArray(data) ? data : []))
       .catch(() => setClasses([]));
-  }, [pathname]);
+  }, []);
 
   const classesActive = pathname === "/classes" || pathname.startsWith("/classes/");
 
@@ -43,7 +43,7 @@ export function Sidebar({
         />
       )}
       <aside
-        className={`sidebar fixed left-0 top-0 z-30 flex h-full w-64 max-w-[85vw] flex-col border-r border-white/10 bg-sidebar-bg shadow-sm transition-transform duration-200 ${
+        className={`sidebar pointer-events-auto fixed left-0 top-0 z-30 flex h-full w-64 max-w-[85vw] flex-col border-r border-white/10 bg-sidebar-bg shadow-sm transition-transform duration-200 ${
           collapsed ? "-translate-x-full" : "translate-x-0"
         }`}
         aria-hidden={collapsed}

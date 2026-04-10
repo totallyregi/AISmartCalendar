@@ -8,17 +8,7 @@ import { DEFAULT_USER_TIMEZONE } from "@/lib/datetimeDisplay";
 import type { CalendarDayMeta } from "@/lib/calendarMeta";
 import { emptyDayMeta, incrementMetaForWeeklyBlock, timelineSourceFromWeeklyBlockType } from "@/lib/calendarMeta";
 import { dayOfWeekFromDateKey, isValidTimeZone, zonedDateKey, zonedDateKeyFromIso, zonedDateTimeToUtc } from "@/lib/timezone";
-
-type TimelineEvent = {
-  id: string;
-  starts_at: string;
-  ends_at: string;
-  title: string;
-  source: "external" | "class" | "fixed_habit" | "flexible_habit" | "assignment" | "generated" | "personal";
-  class_meeting_id?: string;
-  class_id?: string;
-  fromWeeklyPlan?: boolean;
-};
+import type { CalendarTimelineEvent } from "@/lib/calendarTimelineEvent";
 
 type CalendarPreviewEvent = {
   starts_at: string;
@@ -88,7 +78,7 @@ export default async function CalendarPage({
   ]);
 
   const metaByDate: Record<string, CalendarDayMeta> = {};
-  const dayEvents: TimelineEvent[] = [];
+  const dayEvents: CalendarTimelineEvent[] = [];
   const overrideByMeetingDate = new Map<string, { canceled: boolean; start?: string; end?: string }>();
 
   (overrideRes.data ?? []).forEach((o) => {
@@ -132,7 +122,7 @@ export default async function CalendarPage({
 
         ensure(d).classes += 1;
         dayEvents.push({
-          id: m.id,
+          id: `${m.id}_${d}`,
           class_meeting_id: m.id,
           starts_at: zonedDateTimeToUtc(d, startTime, timeZone).toISOString(),
           ends_at: zonedDateTimeToUtc(d, endTime, timeZone).toISOString(),
@@ -253,13 +243,7 @@ export default async function CalendarPage({
         timeZone={timeZone}
         basePath="/calendar"
         showGeneratedDots={false}
-        monthAgendaEvents={dayEvents.map((e) => ({
-          id: e.id,
-          starts_at: e.starts_at,
-          ends_at: e.ends_at,
-          title: e.title,
-          source: e.source,
-        }))}
+        monthAgendaEvents={dayEvents}
       />
       <WeekTimeline date={selectedDate} events={selectedEvents} mode="main" timeZone={timeZone} />
     </div>

@@ -20,12 +20,28 @@ export function AssignmentList({
   const [editing, setEditing] = useState<Assignment | null>(null);
   const [adding, setAdding] = useState(false);
   const [tab, setTab] = useState<AssignmentTab>("incomplete");
+  const addTitleId = `assignment-add-title-${classId}`;
 
   useEffect(() => {
     if (!editing) return;
     const el = document.getElementById(`class-assign-edit-${editing.id}`);
     el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [editing]);
+
+  useEffect(() => {
+    if (!adding) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setAdding(false);
+    };
+    window.addEventListener("keydown", onKey);
+    const tid = window.setTimeout(() => {
+      document.getElementById(addTitleId)?.closest("form")?.querySelector<HTMLInputElement>("input")?.focus();
+    }, 0);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.clearTimeout(tid);
+    };
+  }, [adding, addTitleId]);
 
   const incomplete = assignments.filter((a) => a.status !== "done");
   const completed = assignments.filter((a) => a.status === "done");
@@ -41,9 +57,16 @@ export function AssignmentList({
           aria-label="Close"
           onClick={() => setAdding(false)}
         />
-        <div className="relative z-[1] my-auto w-full max-w-lg">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={addTitleId}
+          className="relative z-[1] my-auto w-full max-w-lg outline-none"
+          tabIndex={-1}
+        >
           <AssignmentForm
             classId={classId}
+            ariaTitleId={addTitleId}
             onClose={() => setAdding(false)}
             onSaved={() => window.location.reload()}
           />

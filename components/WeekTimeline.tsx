@@ -1,29 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useConfirm } from "@/components/ConfirmDialogProvider";
 import { EventEditModal } from "@/components/EventEditModal";
+import type { CalendarTimelineEvent } from "@/lib/calendarTimelineEvent";
+import { useCalendarTimelineActions } from "@/hooks/useCalendarTimelineActions";
+import { TimelineEventActionButtons } from "@/components/TimelineEventActionButtons";
 
-type Event = {
-  id: string;
-  starts_at: string;
-  ends_at: string;
-  title: string;
-  source:
-    | "external"
-    | "class"
-    | "fixed_habit"
-    | "flexible_habit"
-    | "assignment"
-    | "generated"
-    | "personal";
-  class_meeting_id?: string;
-  class_id?: string;
-  /** Weekly plan / applied AI block — edit via `/api/weekly-plan-blocks` */
-  fromWeeklyPlan?: boolean;
-};
-
-const sourceCls: Record<Event["source"], string> = {
+const sourceCls: Record<CalendarTimelineEvent["source"], string> = {
   external: "bg-indigo-100 text-indigo-800",
   class: "bg-violet-100 text-violet-700",
   fixed_habit: "bg-green-100 text-green-800",
@@ -33,9 +16,19 @@ const sourceCls: Record<Event["source"], string> = {
   personal: "bg-rose-100 text-rose-700",
 };
 
-export function WeekTimeline({ date, events, mode, timeZone = "UTC" }: { date: string; events: Event[]; mode: "main" | "ai"; timeZone?: string }) {
-  const [editing, setEditing] = useState<Event | null>(null);
-  const confirm = useConfirm();
+export function WeekTimeline({
+  date,
+  events,
+  mode,
+  timeZone = "UTC",
+}: {
+  date: string;
+  events: CalendarTimelineEvent[];
+  mode: "main" | "ai";
+  timeZone?: string;
+}) {
+  const [editing, setEditing] = useState<CalendarTimelineEvent | null>(null);
+  const actions = useCalendarTimelineActions(date);
 
   function localMinutesOfDay(iso: string) {
     const parts = new Intl.DateTimeFormat("en-US", {
@@ -55,76 +48,6 @@ export function WeekTimeline({ date, events, mode, timeZone = "UTC" }: { date: s
     if (byLocalTime !== 0) return byLocalTime;
     return new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime();
   });
-
-  async function deleteDraft(e: Event) {
-    const ok = await confirm({
-      title: "Delete AI suggestion?",
-      message: "Delete this AI suggestion?",
-      confirmLabel: "Delete",
-      tone: "danger",
-    });
-    if (!ok) return;
-    await fetch(`/api/ai-draft-blocks/${e.id}`, { method: "DELETE" });
-    window.location.reload();
-  }
-
-  async function deleteGeneratedMain(e: Event) {
-    const ok = await confirm({
-      title: "Remove from calendar?",
-      message: "Delete this generated event from Calendar?",
-      confirmLabel: "Delete",
-      tone: "danger",
-    });
-    if (!ok) return;
-    await fetch(`/api/weekly-plan-blocks/${e.id}`, { method: "DELETE" });
-    window.location.reload();
-  }
-
-  async function deleteFixedHabit(e: Event) {
-    const ok = await confirm({
-      title: "Delete habit slot?",
-      message: "Delete this fixed habit slot?",
-      confirmLabel: "Delete",
-      tone: "danger",
-    });
-    if (!ok) return;
-    await fetch(`/api/habit-fixed-slots/${e.id}`, { method: "DELETE" });
-    window.location.reload();
-  }
-
-  async function deleteExternal(e: Event) {
-    const ok = await confirm({
-      title: "Delete imported event?",
-      message: "Delete this imported event from app calendar? Sync may add it back.",
-      confirmLabel: "Delete",
-      tone: "danger",
-    });
-    if (!ok) return;
-    await fetch(`/api/external-events/${e.id}`, { method: "DELETE" });
-    window.location.reload();
-  }
-
-  async function deletePersonal(e: Event) {
-    const ok = await confirm({
-      title: "Delete event?",
-      message: "Delete this personal event?",
-      confirmLabel: "Delete",
-      tone: "danger",
-    });
-    if (!ok) return;
-    await fetch(`/api/user-events/${e.id}`, { method: "DELETE" });
-    window.location.reload();
-  }
-
-  async function cancelClassForDate(e: Event) {
-    if (!e.class_meeting_id || !e.class_id) return;
-    await fetch(`/api/classes/overrides`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ class_meeting_id: e.class_meeting_id, class_id: e.class_id, override_date: date, canceled: true }),
-    });
-    window.location.reload();
-  }
 
   return (
     <div className="ds-card p-4">
@@ -151,68 +74,7 @@ export function WeekTimeline({ date, events, mode, timeZone = "UTC" }: { date: s
                 </span>
               </div>
 
-              <div className="flex flex-wrap gap-2 text-xs">
-                {mode === "ai" && e.source === "generated" && (
-                  <>
-                    <button type="button" onClick={() => setEditing(e)} className="rounded border-[0.5px] border-palette-card-border px-2 py-1 text-palette-navy hover:bg-palette-hover">
-                      Edit
-                    </button>
-                    <button type="button" onClick={() => deleteDraft(e)} className="rounded border border-red-300 px-2 py-1 text-red-600">
-                      Delete
-                    </button>
-                  </>
-                )}
-                {mode === "main" && e.source === "personal" && (
-                  <>
-                    <button type="button" onClick={() => setEditing(e)} className="rounded border-[0.5px] border-palette-card-border px-2 py-1 text-palette-navy hover:bg-palette-hover">
-                      Edit
-                    </button>
-                    <button type="button" onClick={() => deletePersonal(e)} className="rounded border border-red-300 px-2 py-1 text-red-600">
-                      Delete
-                    </button>
-                  </>
-                )}
-                {mode === "main" && e.source === "class" && e.class_meeting_id && e.class_id && (
-                  <>
-                    <button type="button" onClick={() => setEditing(e)} className="rounded border-[0.5px] border-palette-card-border px-2 py-1 text-palette-navy hover:bg-palette-hover">
-                      Edit
-                    </button>
-                    <button type="button" onClick={() => cancelClassForDate(e)} className="rounded border border-red-300 px-2 py-1 text-red-600">
-                      Delete
-                    </button>
-                  </>
-                )}
-                {mode === "main" && e.fromWeeklyPlan && (
-                  <>
-                    <button type="button" onClick={() => setEditing(e)} className="rounded border-[0.5px] border-palette-card-border px-2 py-1 text-palette-navy hover:bg-palette-hover">
-                      Edit
-                    </button>
-                    <button type="button" onClick={() => deleteGeneratedMain(e)} className="rounded border border-red-300 px-2 py-1 text-red-600">
-                      Delete
-                    </button>
-                  </>
-                )}
-                {mode === "main" && e.source === "fixed_habit" && !e.fromWeeklyPlan && (
-                  <>
-                    <button type="button" onClick={() => setEditing(e)} className="rounded border-[0.5px] border-palette-card-border px-2 py-1 text-palette-navy hover:bg-palette-hover">
-                      Edit
-                    </button>
-                    <button type="button" onClick={() => deleteFixedHabit(e)} className="rounded border border-red-300 px-2 py-1 text-red-600">
-                      Delete
-                    </button>
-                  </>
-                )}
-                {mode === "main" && e.source === "external" && (
-                  <>
-                    <button type="button" onClick={() => setEditing(e)} className="rounded border-[0.5px] border-palette-card-border px-2 py-1 text-palette-navy hover:bg-palette-hover">
-                      Edit
-                    </button>
-                    <button type="button" onClick={() => deleteExternal(e)} className="rounded border border-red-300 px-2 py-1 text-red-600">
-                      Delete
-                    </button>
-                  </>
-                )}
-              </div>
+              <TimelineEventActionButtons event={e} mode={mode} onEdit={() => setEditing(e)} actions={actions} variant="palette" />
             </li>
           ))}
         </ul>
