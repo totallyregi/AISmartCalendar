@@ -63,10 +63,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             key={t.id}
             role={t.tone === "error" ? "alert" : "status"}
             aria-live={t.tone === "error" ? "assertive" : "polite"}
-            className={`pointer-events-auto flex items-start justify-between gap-3 rounded-xl border px-4 py-3 text-sm shadow-lg ${
+            className={`pointer-events-auto flex items-start justify-between gap-3 rounded-xl border-2 px-4 py-3 text-sm shadow-lg ${
               t.tone === "error"
-                ? "border-red-200 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950/90 dark:text-red-100"
-                : "border-palette-green/50 bg-palette-green/15 text-palette-navy shadow-[0_6px_28px_rgba(107,174,138,0.35)] ring-1 ring-palette-green/25 dark:border-palette-green/45 dark:bg-palette-green/18 dark:text-emerald-50 dark:shadow-[0_6px_28px_rgba(123,200,164,0.2)] dark:ring-palette-green/30"
+                ? "border-red-300 bg-red-50 text-red-900 dark:border-red-700 dark:bg-red-950 dark:text-red-100"
+                : "border-palette-green bg-emerald-50 text-palette-navy dark:border-palette-green dark:bg-emerald-950 dark:text-emerald-100"
             }`}
           >
             <div className="flex min-w-0 flex-1 items-start gap-3">
@@ -92,7 +92,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               type="button"
               onClick={() => dismiss(t.id)}
               className={`shrink-0 rounded-md px-1.5 py-0.5 text-xs font-medium opacity-70 hover:opacity-100 ${
-                t.tone === "error" ? "" : "text-palette-navy hover:bg-palette-green/25 dark:text-emerald-100 dark:hover:bg-palette-green/25"
+                t.tone === "error"
+                  ? ""
+                  : "text-palette-navy hover:bg-emerald-200 dark:text-emerald-100 dark:hover:bg-emerald-800"
               }`}
               aria-label="Dismiss notification"
             >
