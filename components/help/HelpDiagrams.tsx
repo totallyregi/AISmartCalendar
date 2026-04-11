@@ -147,7 +147,7 @@ export function CalendarVsAiIllustration() {
         </figcaption>
       </figure>
       <figure className="rounded-xl border border-emerald-200/80 bg-emerald-50/50 p-4 dark:border-emerald-800 dark:bg-emerald-950/30">
-        <svg viewBox="0 0 200 120" className="h-auto w-full" role="img" aria-labelledby="ai-title">
+        <svg viewBox="0 0 200 128" className="h-auto w-full" role="img" aria-labelledby="ai-title">
           <title id="ai-title">AI Calendar — draft suggestions</title>
           <text x="100" y="22" textAnchor="middle" className="fill-emerald-900 text-[12px] font-semibold dark:fill-emerald-100" fontFamily="ui-sans-serif, system-ui, sans-serif">
             AI Calendar
@@ -170,7 +170,14 @@ export function CalendarVsAiIllustration() {
           <text x="138" y="88" textAnchor="middle" className="fill-emerald-900 text-[8px] dark:fill-emerald-100" fontFamily="ui-sans-serif, system-ui, sans-serif">
             draft
           </text>
-          <text x="100" y="112" textAnchor="middle" className="fill-emerald-800 text-[9px] dark:fill-emerald-200" fontFamily="ui-sans-serif, system-ui, sans-serif">
+          <text
+            x="100"
+            y="118"
+            textAnchor="middle"
+            dominantBaseline="hanging"
+            className="fill-emerald-800 text-[9px] dark:fill-emerald-200"
+            fontFamily="ui-sans-serif, system-ui, sans-serif"
+          >
             Preview before applying
           </text>
         </svg>
