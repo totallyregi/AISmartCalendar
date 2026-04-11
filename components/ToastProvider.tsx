@@ -66,14 +66,34 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             className={`pointer-events-auto flex items-start justify-between gap-3 rounded-xl border px-4 py-3 text-sm shadow-lg ${
               t.tone === "error"
                 ? "border-red-200 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950/90 dark:text-red-100"
-                : "border-palette-card-border bg-palette-card-bg text-palette-navy shadow-[0_4px_24px_rgba(27,42,74,0.12)]"
+                : "border-palette-green/50 bg-palette-green/15 text-palette-navy shadow-[0_6px_28px_rgba(107,174,138,0.35)] ring-1 ring-palette-green/25 dark:border-palette-green/45 dark:bg-palette-green/18 dark:text-emerald-50 dark:shadow-[0_6px_28px_rgba(123,200,164,0.2)] dark:ring-palette-green/30"
             }`}
           >
-            <span className="min-w-0 flex-1 leading-snug">{t.message}</span>
+            <div className="flex min-w-0 flex-1 items-start gap-3">
+              {t.tone === "success" && (
+                <span
+                  className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-palette-green text-white shadow-sm dark:text-palette-navy"
+                  aria-hidden
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 12 12" fill="none" aria-hidden>
+                    <path
+                      d="M2.5 6L5 8.5L9.5 3.5"
+                      stroke="currentColor"
+                      strokeWidth="1.75"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+              )}
+              <span className="min-w-0 flex-1 pt-0.5 font-medium leading-snug">{t.message}</span>
+            </div>
             <button
               type="button"
               onClick={() => dismiss(t.id)}
-              className="shrink-0 rounded-md px-1.5 py-0.5 text-xs font-medium opacity-70 hover:opacity-100"
+              className={`shrink-0 rounded-md px-1.5 py-0.5 text-xs font-medium opacity-70 hover:opacity-100 ${
+                t.tone === "error" ? "" : "text-palette-navy hover:bg-palette-green/25 dark:text-emerald-100 dark:hover:bg-palette-green/25"
+              }`}
               aria-label="Dismiss notification"
             >
               ×
