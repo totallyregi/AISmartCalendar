@@ -2,12 +2,14 @@
 
 import { useConfirm } from "@/components/ConfirmDialogProvider";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { ClassSection } from "@/lib/types";
 import { ClassForm } from "./ClassForm";
 import { ScheduleSlotList } from "./ScheduleSlotList";
 
 export function ClassList({ classes }: { classes: ClassSection[] }) {
+  const router = useRouter();
   const confirm = useConfirm();
   const [editing, setEditing] = useState<ClassSection | null>(null);
   const [adding, setAdding] = useState(false);
@@ -32,7 +34,7 @@ export function ClassList({ classes }: { classes: ClassSection[] }) {
             setAdding(false);
             setEditing(null);
           }}
-          onSaved={() => window.location.reload()}
+          onSaved={() => router.refresh()}
         />
       )}
 
@@ -60,8 +62,8 @@ export function ClassList({ classes }: { classes: ClassSection[] }) {
                       tone: "danger",
                     });
                     if (!ok) return;
-                    await fetch(`/api/classes/${c.id}`, { method: "DELETE" });
-                    window.location.reload();
+                    const delRes = await fetch(`/api/classes/${c.id}`, { method: "DELETE" });
+                    if (delRes.ok) router.refresh();
                   }}
                   className="text-sm text-red-600"
                 >

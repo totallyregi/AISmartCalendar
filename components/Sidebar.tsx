@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type ClassItem = { id: string; class_code: string; class_name: string };
 
@@ -17,12 +17,16 @@ export function Sidebar({
   const [classesOpen, setClassesOpen] = useState(true);
   const [classes, setClasses] = useState<ClassItem[]>([]);
 
-  useEffect(() => {
+  const loadClasses = useCallback(() => {
     fetch("/api/classes")
       .then((r) => r.json())
       .then((data) => setClasses(Array.isArray(data) ? data : []))
       .catch(() => setClasses([]));
   }, []);
+
+  useEffect(() => {
+    loadClasses();
+  }, [loadClasses]);
 
   const classesActive = pathname === "/classes" || pathname.startsWith("/classes/");
 
@@ -127,7 +131,14 @@ export function Sidebar({
           </Link>
         </nav>
 
-        <div className="border-t border-white/10 p-3">
+        <div className="space-y-2 border-t border-white/10 p-3">
+          <button
+            type="button"
+            onClick={() => loadClasses()}
+            className="w-full rounded-lg border border-white/20 px-3 py-2 text-left text-xs font-medium text-white/90 hover:bg-white/10"
+          >
+            Refresh classes
+          </button>
           <Link href="/help" className={`${baseLinkCls} ${pathname === "/help" ? navActive : `${navInactive} text-white/75`}`}>
             Help
           </Link>

@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ToastProvider";
 import { TimePicker12h } from "@/components/TimePicker12h";
 import { formatConflictApiMessage, validateOrderedInstants } from "@/lib/calendarOverlap";
 import { localDateTimeToIsoUtc } from "@/lib/time12h";
@@ -12,6 +14,8 @@ type AssignmentRow = { id: string; name?: string; title?: string; remaining_minu
 type HabitRow = { id: string; name: string; type: string; active: boolean };
 
 export function AddEventForm({ defaultDate }: { defaultDate: string }) {
+  const router = useRouter();
+  const { showToast } = useToast();
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState<Category>("personal");
   const [title, setTitle] = useState("");
@@ -23,6 +27,12 @@ export function AddEventForm({ defaultDate }: { defaultDate: string }) {
   const [endTime, setEndTime] = useState("13:00:00");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{
+    title?: string;
+    assignment?: string;
+    habit?: string;
+    time?: string;
+  }>({});
 
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
@@ -102,29 +112,31 @@ export function AddEventForm({ defaultDate }: { defaultDate: string }) {
     setStartTime("12:00:00");
     setEndTime("13:00:00");
     setError(null);
+    setFieldErrors({});
   }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setFieldErrors({});
     const starts_at = localDateTimeToIsoUtc(date, startTime);
     const ends_at = localDateTimeToIsoUtc(date, endTime);
     const orderErr = validateOrderedInstants(starts_at, ends_at);
     if (orderErr) {
-      setError(orderErr);
+      setFieldErrors({ time: orderErr });
       return;
     }
 
     if (category === "personal" && !title.trim()) {
-      setError("Title is required.");
+      setFieldErrors({ title: "Title is required." });
       return;
     }
-    if (category === "assignment" && !assignmentId) {
-      setError("Choose a class and assignment.");
+    if (category === "assignment" && (!classId || !assignmentId)) {
+      setFieldErrors({ assignment: "Choose a class and assignment." });
       return;
     }
     if (category === "flexible_habit" && !habitId) {
-      setError("Choose a flexible habit.");
+      setFieldErrors({ habit: "Choose a flexible habit." });
       return;
     }
 
@@ -145,7 +157,9 @@ export function AddEventForm({ defaultDate }: { defaultDate: string }) {
       setError(formatConflictApiMessage(data));
       return;
     }
-    window.location.reload();
+    showToast("Event added", "success");
+    setOpen(false);
+    router.refresh();
   }
 
   const selectedHabit = flexHabits.find((h) => h.id === habitId);
@@ -186,6 +200,7 @@ export function AddEventForm({ defaultDate }: { defaultDate: string }) {
               setClassId("");
               setHabitId("");
               setError(null);
+              setFieldErrors({});
             }}
             className="w-full rounded-lg border-[0.5px] border-palette-card-border bg-palette-card-bg px-2 py-2 text-palette-navy"
           >
@@ -197,19 +212,37 @@ export function AddEventForm({ defaultDate }: { defaultDate: string }) {
 
         {category === "personal" && (
           <div className="sm:col-span-2 lg:col-span-2">
-            <label className="mb-1 block text-xs font-medium text-palette-slate">Title</label>
+            <label className="mb-1 block text-xs font-medium text-palette-slate" htmlFor="add-event-title">
+              Title
+            </label>
             <input
+              id="add-event-title"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                setFieldErrors((f) => ({ ...f, title: undefined }));
+              }}
               placeholder="Event title"
               required
+              aria-invalid={!!fieldErrors.title}
+              aria-describedby={fieldErrors.title ? "add-event-err-title" : undefined}
               className="w-full rounded-lg border-[0.5px] border-palette-card-border bg-palette-card-bg px-2 py-2 text-palette-navy"
             />
+            {fieldErrors.title && (
+              <p id="add-event-err-title" className="mt-1 text-xs text-red-600" role="alert">
+                {fieldErrors.title}
+              </p>
+            )}
           </div>
         )}
 
         {category === "assignment" && (
           <>
+            {fieldErrors.assignment && (
+              <p className="sm:col-span-2 text-xs text-red-600" id="add-event-err-assignment" role="alert">
+                {fieldErrors.assignment}
+              </p>
+            )}
             <div className="sm:col-span-2">
               <label className="mb-1 block text-xs font-medium text-palette-slate">Class</label>
               <select
@@ -217,8 +250,11 @@ export function AddEventForm({ defaultDate }: { defaultDate: string }) {
                 onChange={(e) => {
                   setClassId(e.target.value);
                   setAssignmentId("");
+                  setFieldErrors((f) => ({ ...f, assignment: undefined }));
                 }}
                 required
+                aria-invalid={!!fieldErrors.assignment}
+                aria-describedby={fieldErrors.assignment ? "add-event-err-assignment" : undefined}
                 className="w-full rounded-lg border-[0.5px] border-palette-card-border bg-palette-card-bg px-2 py-2 text-palette-navy"
               >
                 <option value="">Select class</option>
@@ -233,9 +269,14 @@ export function AddEventForm({ defaultDate }: { defaultDate: string }) {
               <label className="mb-1 block text-xs font-medium text-palette-slate">Assignment</label>
               <select
                 value={assignmentId}
-                onChange={(e) => setAssignmentId(e.target.value)}
+                onChange={(e) => {
+                  setAssignmentId(e.target.value);
+                  setFieldErrors((f) => ({ ...f, assignment: undefined }));
+                }}
                 required
                 disabled={!classId}
+                aria-invalid={!!fieldErrors.assignment}
+                aria-describedby={fieldErrors.assignment ? "add-event-err-assignment" : undefined}
                 className="w-full rounded-lg border-[0.5px] border-palette-card-border bg-palette-card-bg px-2 py-2 text-palette-navy disabled:opacity-60"
               >
                 <option value="">{classId ? "Select assignment" : "Pick a class first"}</option>
@@ -251,11 +292,19 @@ export function AddEventForm({ defaultDate }: { defaultDate: string }) {
 
         {category === "flexible_habit" && (
           <div className="sm:col-span-2 lg:col-span-4">
-            <label className="mb-1 block text-xs font-medium text-palette-slate">Habit</label>
+            <label className="mb-1 block text-xs font-medium text-palette-slate" htmlFor="add-event-habit">
+              Habit
+            </label>
             <select
+              id="add-event-habit"
               value={habitId}
-              onChange={(e) => setHabitId(e.target.value)}
+              onChange={(e) => {
+                setHabitId(e.target.value);
+                setFieldErrors((f) => ({ ...f, habit: undefined }));
+              }}
               required
+              aria-invalid={!!fieldErrors.habit}
+              aria-describedby={fieldErrors.habit ? "add-event-err-habit" : undefined}
               className="w-full rounded-lg border-[0.5px] border-palette-card-border bg-palette-card-bg px-2 py-2 text-palette-navy"
             >
               <option value="">Select flexible habit</option>
@@ -265,6 +314,11 @@ export function AddEventForm({ defaultDate }: { defaultDate: string }) {
                 </option>
               ))}
             </select>
+            {fieldErrors.habit && (
+              <p id="add-event-err-habit" className="mt-1 text-xs text-red-600" role="alert">
+                {fieldErrors.habit}
+              </p>
+            )}
             {selectedHabit && (
               <p className="mt-1 text-xs text-palette-slate">Title on calendar: {selectedHabit.name}</p>
             )}
@@ -283,13 +337,34 @@ export function AddEventForm({ defaultDate }: { defaultDate: string }) {
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-palette-slate">Start</label>
-          <TimePicker12h idPrefix="ae-s" minuteStep={minuteStep} value={startTime} onChange={setStartTime} />
+          <TimePicker12h
+            idPrefix="ae-s"
+            minuteStep={minuteStep}
+            value={startTime}
+            onChange={(v) => {
+              setStartTime(v);
+              setFieldErrors((f) => ({ ...f, time: undefined }));
+            }}
+          />
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-palette-slate">End</label>
-          <TimePicker12h idPrefix="ae-e" minuteStep={minuteStep} value={endTime} onChange={setEndTime} />
+          <TimePicker12h
+            idPrefix="ae-e"
+            minuteStep={minuteStep}
+            value={endTime}
+            onChange={(v) => {
+              setEndTime(v);
+              setFieldErrors((f) => ({ ...f, time: undefined }));
+            }}
+          />
         </div>
       </div>
+      {fieldErrors.time && (
+        <p className="text-xs text-red-600" id="add-event-err-time" role="alert">
+          {fieldErrors.time}
+        </p>
+      )}
 
       {listsLoading && <p className="mt-2 text-xs text-palette-slate">Loading options…</p>}
       {category === "assignment" && selectedAssignment && (

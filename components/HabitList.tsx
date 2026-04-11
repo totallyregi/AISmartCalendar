@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useConfirm } from "@/components/ConfirmDialogProvider";
 import { WEEKDAY_FULL, compareDayTimeSlots } from "@/lib/datetimeDisplay";
 import { HabitForm } from "./HabitForm";
@@ -65,6 +66,7 @@ function FlexibleHabitMeta({ h, flex }: { h: HabitRow; flex: Record<string, unkn
 }
 
 function HabitListItem({ h, onEdit }: { h: HabitRow; onEdit: () => void }) {
+  const router = useRouter();
   const confirm = useConfirm();
   const flexRules = h.habit_flexible_rules as unknown;
   const flex = Array.isArray(flexRules) ? flexRules[0] : flexRules;
@@ -91,12 +93,12 @@ function HabitListItem({ h, onEdit }: { h: HabitRow; onEdit: () => void }) {
           <button
             type="button"
             onClick={async () => {
-              await fetch(`/api/habits/${h.id}`, {
+              const res = await fetch(`/api/habits/${h.id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ active: !h.active }),
               });
-              window.location.reload();
+              if (res.ok) router.refresh();
             }}
             className="text-sm text-palette-slate hover:text-palette-navy"
           >
@@ -115,8 +117,8 @@ function HabitListItem({ h, onEdit }: { h: HabitRow; onEdit: () => void }) {
                 tone: "danger",
               });
               if (!ok) return;
-              await fetch(`/api/habits/${h.id}`, { method: "DELETE" });
-              window.location.reload();
+              const res = await fetch(`/api/habits/${h.id}`, { method: "DELETE" });
+              if (res.ok) router.refresh();
             }}
             className="text-sm text-red-600"
           >
@@ -129,6 +131,7 @@ function HabitListItem({ h, onEdit }: { h: HabitRow; onEdit: () => void }) {
 }
 
 export function HabitList({ habits }: { habits: HabitRow[] }) {
+  const router = useRouter();
   const [editing, setEditing] = useState<HabitRow | null>(null);
   const [adding, setAdding] = useState(false);
 
@@ -156,7 +159,7 @@ export function HabitList({ habits }: { habits: HabitRow[] }) {
       </button>
 
       {(adding || editing) && (
-        <HabitForm habit={editing ?? undefined} onClose={() => { setAdding(false); setEditing(null); }} onSaved={() => window.location.reload()} />
+        <HabitForm habit={editing ?? undefined} onClose={() => { setAdding(false); setEditing(null); }} onSaved={() => router.refresh()} />
       )}
 
       <div className="grid gap-8 lg:grid-cols-2 lg:items-start">

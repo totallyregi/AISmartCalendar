@@ -70,6 +70,14 @@ export function HabitForm({
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{
+    type?: string;
+    fixed?: string;
+    duration?: string;
+    preferredDays?: string;
+    timesPerWeek?: string;
+    preferredSlots?: string;
+  }>({});
 
   const toggleDay = (d: number) => {
     setPreferredDays((prev) => {
@@ -87,13 +95,14 @@ export function HabitForm({
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setFieldErrors({});
 
     const url = habit ? `/api/habits/${habit.id}` : "/api/habits";
     const method = habit ? "PUT" : "POST";
 
     if (!type) {
       setLoading(false);
-      setError("Please select a habit type");
+      setFieldErrors({ type: "Please select a habit type." });
       return;
     }
 
@@ -101,7 +110,7 @@ export function HabitForm({
       const incomplete = fixedSlots.some((s) => s.day_of_week < 0 || !s.start_time || !s.end_time);
       if (incomplete) {
         setLoading(false);
-        setError("Please select a day, start time, and end time for each fixed slot.");
+        setFieldErrors({ fixed: "Select a day, start time, and end time for each fixed slot." });
         return;
       }
     }
@@ -109,13 +118,13 @@ export function HabitForm({
       const durationMinutes = durationH * 60 + durationM;
       if (durationMinutes <= 0 || durationMinutes % 15 !== 0) {
         setLoading(false);
-        setError("Flexible duration must be a positive 15-minute increment.");
+        setFieldErrors({ duration: "Duration must be a positive 15-minute increment." });
         return;
       }
       if (preferenceMode === "preferred_days") {
         if (preferredDays.length === 0) {
           setLoading(false);
-          setError("Choose at least one preferred day.");
+          setFieldErrors({ preferredDays: "Choose at least one preferred day." });
           return;
         }
         const daySet = new Set(preferredDays);
@@ -123,13 +132,13 @@ export function HabitForm({
         const missing = [...daySet].some((d) => !byDay.has(d));
         if (missing) {
           setLoading(false);
-          setError("Each preferred day needs at least one preferred time range.");
+          setFieldErrors({ preferredSlots: "Each preferred day needs at least one preferred time range." });
           return;
         }
       } else {
         if (timesPerWeek === "" || Number(timesPerWeek) <= 0) {
           setLoading(false);
-          setError("Times per week must be a positive number.");
+          setFieldErrors({ timesPerWeek: "Times per week must be a positive number." });
           return;
         }
       }
@@ -138,7 +147,7 @@ export function HabitForm({
       );
       if (invalidSlots) {
         setLoading(false);
-        setError("Each preferred time row must have day, start, and end.");
+        setFieldErrors({ preferredSlots: "Each preferred time row needs a day, start, and end." });
         return;
       }
     }
@@ -189,23 +198,52 @@ export function HabitForm({
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <div>
           <label className="block text-sm font-medium text-palette-navy">Habit name</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} required className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy" />
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy"
+            aria-invalid={false}
+          />
         </div>
         <div>
-          <label className="block text-sm font-medium text-palette-navy">Type</label>
-          <select value={type} onChange={(e) => setType(e.target.value as "" | "fixed" | "flexible")} required className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy">
+          <label className="block text-sm font-medium text-palette-navy" htmlFor="habit-type-select">
+            Type
+          </label>
+          <select
+            id="habit-type-select"
+            value={type}
+            onChange={(e) => {
+              setType(e.target.value as "" | "fixed" | "flexible");
+              setFieldErrors((f) => ({ ...f, type: undefined }));
+            }}
+            required
+            className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy"
+            aria-invalid={!!fieldErrors.type}
+            aria-describedby={fieldErrors.type ? "habit-err-type" : undefined}
+          >
             <option value="" disabled>
               Select type
             </option>
             <option value="fixed">Fixed</option>
             <option value="flexible">Flexible</option>
           </select>
+          {fieldErrors.type && (
+            <p id="habit-err-type" className="mt-1 text-xs text-red-600">
+              {fieldErrors.type}
+            </p>
+          )}
         </div>
       </div>
 
       {type === "fixed" ? (
         <div className="mt-4 space-y-3">
           <p className="text-sm font-medium text-palette-navy">Fixed schedule</p>
+          {fieldErrors.fixed && (
+            <p id="habit-err-fixed" className="text-xs text-red-600" role="alert">
+              {fieldErrors.fixed}
+            </p>
+          )}
           {fixedSlots.map((s, i) => (
             <div
               key={i}
@@ -276,14 +314,39 @@ export function HabitForm({
       ) : type === "flexible" ? (
         <div className="mt-4 space-y-2">
           <p className="text-sm font-medium text-palette-navy">Flexible target</p>
-          <div className="grid gap-2 sm:grid-cols-2">
+          {fieldErrors.duration && (
+            <p id="habit-err-duration" className="text-xs text-red-600" role="alert">
+              {fieldErrors.duration}
+            </p>
+          )}
+          <div
+            className="grid gap-2 sm:grid-cols-2"
+            aria-invalid={!!fieldErrors.duration}
+            aria-describedby={fieldErrors.duration ? "habit-err-duration" : undefined}
+          >
             <div>
               <label className="block text-sm text-palette-navy">Duration hours</label>
-              <input type="number" min={0} value={durationH} onChange={(e) => setDurationH(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy" />
+              <input
+                type="number"
+                min={0}
+                value={durationH}
+                onChange={(e) => {
+                  setDurationH(Number(e.target.value));
+                  setFieldErrors((f) => ({ ...f, duration: undefined }));
+                }}
+                className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy"
+              />
             </div>
             <div>
               <label className="block text-sm text-palette-navy">Duration minutes</label>
-              <select value={durationM} onChange={(e) => setDurationM(Number(e.target.value))} className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy">
+              <select
+                value={durationM}
+                onChange={(e) => {
+                  setDurationM(Number(e.target.value));
+                  setFieldErrors((f) => ({ ...f, duration: undefined }));
+                }}
+                className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy"
+              >
                 {minuteOptions.map((m) => (
                   <option key={m} value={m}>
                     {m}
@@ -305,13 +368,29 @@ export function HabitForm({
           </div>
           {preferenceMode === "preferred_days" ? (
             <div className="sm:col-span-2">
-              <label className="block text-sm text-palette-navy">Preferred days</label>
-              <div className="mt-1 flex flex-wrap gap-2">
+              <label className="block text-sm text-palette-navy" id="habit-preferred-days-label">
+                Preferred days
+              </label>
+              {fieldErrors.preferredDays && (
+                <p id="habit-err-pref-days" className="mt-1 text-xs text-red-600" role="alert">
+                  {fieldErrors.preferredDays}
+                </p>
+              )}
+              <div
+                className="mt-1 flex flex-wrap gap-2"
+                role="group"
+                aria-labelledby="habit-preferred-days-label"
+                aria-invalid={!!fieldErrors.preferredDays}
+                aria-describedby={fieldErrors.preferredDays ? "habit-err-pref-days" : undefined}
+              >
                 {WEEKDAY_FULL.map((d, idx) => (
                   <button
                     type="button"
                     key={d}
-                    onClick={() => toggleDay(idx)}
+                    onClick={() => {
+                      toggleDay(idx);
+                      setFieldErrors((f) => ({ ...f, preferredDays: undefined }));
+                    }}
                     className={`rounded-lg px-2 py-1 text-xs sm:text-sm ${preferredDays.includes(idx) ? "bg-palette-sky font-medium text-palette-ink" : "border border-palette-card-border bg-palette-card-bg text-palette-slate hover:bg-palette-hover"}`}
                   >
                     {d}
@@ -321,15 +400,33 @@ export function HabitForm({
             </div>
           ) : (
             <div className="sm:col-span-2">
-              <label className="block text-sm text-palette-navy">Times per week</label>
+              <label className="block text-sm text-palette-navy" htmlFor="habit-times-per-week">
+                Times per week
+              </label>
               <input
+                id="habit-times-per-week"
                 type="number"
                 min={1}
                 value={timesPerWeek}
-                onChange={(e) => setTimesPerWeek(e.target.value === "" ? "" : Number(e.target.value))}
+                onChange={(e) => {
+                  setTimesPerWeek(e.target.value === "" ? "" : Number(e.target.value));
+                  setFieldErrors((f) => ({ ...f, timesPerWeek: undefined }));
+                }}
+                aria-invalid={!!fieldErrors.timesPerWeek}
+                aria-describedby={fieldErrors.timesPerWeek ? "habit-err-tpw" : undefined}
                 className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy"
               />
+              {fieldErrors.timesPerWeek && (
+                <p id="habit-err-tpw" className="mt-1 text-xs text-red-600" role="alert">
+                  {fieldErrors.timesPerWeek}
+                </p>
+              )}
             </div>
+          )}
+          {fieldErrors.preferredSlots && (
+            <p id="habit-err-pref-slots" className="text-xs text-red-600" role="alert">
+              {fieldErrors.preferredSlots}
+            </p>
           )}
           <div className="sm:col-span-2 space-y-2">
             <div className="flex items-center justify-between">

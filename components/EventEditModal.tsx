@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { TimePicker12h } from "@/components/TimePicker12h";
 import { formatConflictApiMessage, validateHhmmssRange, validateOrderedInstants } from "@/lib/calendarOverlap";
@@ -53,6 +54,8 @@ export function EventEditModal({
   mode: "main" | "ai";
   timeZone: string;
 }) {
+  const router = useRouter();
+  const titleInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [editDate, setEditDate] = useState("");
   const [startTime, setStartTime] = useState("12:00:00");
@@ -72,6 +75,21 @@ export function EventEditModal({
     setStartTime(zonedHhMmSs(event.starts_at, timeZone, step));
     setEndTime(zonedHhMmSs(event.ends_at, timeZone, step));
   }, [open, event, kind, timeZone, step]);
+
+  useEffect(() => {
+    if (!open || !kind) return;
+    const t = window.setTimeout(() => titleInputRef.current?.focus(), 0);
+    return () => window.clearTimeout(t);
+  }, [open, kind, event?.id]);
+
+  useEffect(() => {
+    if (!open || !kind) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, kind, onClose]);
 
   async function handleSave() {
     if (!event || !kind) return;
@@ -166,7 +184,8 @@ export function EventEditModal({
         }
       }
 
-      window.location.reload();
+      onClose();
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -202,6 +221,7 @@ export function EventEditModal({
               {kind === "external" ? "Title (summary)" : "Title"}
             </label>
             <input
+              ref={titleInputRef}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-600 dark:bg-zinc-800"

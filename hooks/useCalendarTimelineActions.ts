@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useConfirm } from "@/components/ConfirmDialogProvider";
 import type { CalendarTimelineEvent } from "@/lib/calendarTimelineEvent";
 
@@ -19,6 +20,7 @@ export type CalendarTimelineActions = {
  */
 export function useCalendarTimelineActions(overrideDateYyyyMmDd: string): CalendarTimelineActions {
   const confirm = useConfirm();
+  const router = useRouter();
 
   const deleteDraft = useCallback(
     async (e: CalendarTimelineEvent) => {
@@ -29,10 +31,10 @@ export function useCalendarTimelineActions(overrideDateYyyyMmDd: string): Calend
         tone: "danger",
       });
       if (!ok) return;
-      await fetch(`/api/ai-draft-blocks/${e.id}`, { method: "DELETE" });
-      window.location.reload();
+      const res = await fetch(`/api/ai-draft-blocks/${e.id}`, { method: "DELETE" });
+      if (res.ok) router.refresh();
     },
-    [confirm]
+    [confirm, router]
   );
 
   const deleteGeneratedMain = useCallback(
@@ -44,10 +46,10 @@ export function useCalendarTimelineActions(overrideDateYyyyMmDd: string): Calend
         tone: "danger",
       });
       if (!ok) return;
-      await fetch(`/api/weekly-plan-blocks/${e.id}`, { method: "DELETE" });
-      window.location.reload();
+      const res = await fetch(`/api/weekly-plan-blocks/${e.id}`, { method: "DELETE" });
+      if (res.ok) router.refresh();
     },
-    [confirm]
+    [confirm, router]
   );
 
   const deleteFixedHabit = useCallback(
@@ -59,10 +61,10 @@ export function useCalendarTimelineActions(overrideDateYyyyMmDd: string): Calend
         tone: "danger",
       });
       if (!ok) return;
-      await fetch(`/api/habit-fixed-slots/${e.id}`, { method: "DELETE" });
-      window.location.reload();
+      const res = await fetch(`/api/habit-fixed-slots/${e.id}`, { method: "DELETE" });
+      if (res.ok) router.refresh();
     },
-    [confirm]
+    [confirm, router]
   );
 
   const deleteExternal = useCallback(
@@ -74,10 +76,10 @@ export function useCalendarTimelineActions(overrideDateYyyyMmDd: string): Calend
         tone: "danger",
       });
       if (!ok) return;
-      await fetch(`/api/external-events/${e.id}`, { method: "DELETE" });
-      window.location.reload();
+      const res = await fetch(`/api/external-events/${e.id}`, { method: "DELETE" });
+      if (res.ok) router.refresh();
     },
-    [confirm]
+    [confirm, router]
   );
 
   const deletePersonal = useCallback(
@@ -89,16 +91,16 @@ export function useCalendarTimelineActions(overrideDateYyyyMmDd: string): Calend
         tone: "danger",
       });
       if (!ok) return;
-      await fetch(`/api/user-events/${e.id}`, { method: "DELETE" });
-      window.location.reload();
+      const res = await fetch(`/api/user-events/${e.id}`, { method: "DELETE" });
+      if (res.ok) router.refresh();
     },
-    [confirm]
+    [confirm, router]
   );
 
   const cancelClassForDate = useCallback(
     async (e: CalendarTimelineEvent) => {
       if (!e.class_meeting_id || !e.class_id) return;
-      await fetch(`/api/classes/overrides`, {
+      const res = await fetch(`/api/classes/overrides`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -108,9 +110,9 @@ export function useCalendarTimelineActions(overrideDateYyyyMmDd: string): Calend
           canceled: true,
         }),
       });
-      window.location.reload();
+      if (res.ok) router.refresh();
     },
-    [overrideDateYyyyMmDd]
+    [overrideDateYyyyMmDd, router]
   );
 
   return {

@@ -6,6 +6,7 @@ import { ChangePasswordModal } from "@/components/ChangePasswordModal";
 import { ConfirmDialogProvider } from "@/components/ConfirmDialogProvider";
 import { Sidebar } from "@/components/Sidebar";
 import { SignOutButton } from "@/components/SignOutButton";
+import { ToastProvider } from "@/components/ToastProvider";
 
 export function ProtectedShell({
   email,
@@ -39,6 +40,7 @@ export function ProtectedShell({
 
   return (
     <ConfirmDialogProvider>
+    <ToastProvider>
     <div className="min-h-screen bg-palette-cream text-palette-navy">
       <AutoTimezoneBootstrap />
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((v) => !v)} />
@@ -91,6 +93,7 @@ export function ProtectedShell({
       </div>
       <ChangePasswordModal open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
     </div>
+    </ToastProvider>
     </ConfirmDialogProvider>
   );
 }

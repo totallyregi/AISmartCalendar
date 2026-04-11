@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { DEFAULT_USER_TIMEZONE, WEEKDAY_FULL, formatTimeHhmmssTo12h } from "@/lib/datetimeDisplay";
 import { AppearanceTheme } from "@/components/AppearanceTheme";
 import { TimePicker12h } from "@/components/TimePicker12h";
+import { useToast } from "@/components/ToastProvider";
 import { createClient } from "@/lib/supabase/client";
 
 type Preference = {
@@ -55,6 +57,8 @@ const defaultPref: Preference = {
 };
 
 export default function PreferencesPage() {
+  const router = useRouter();
+  const { showToast } = useToast();
   const [pref, setPref] = useState<Preference>(defaultPref);
   const [windows, setWindows] = useState<WindowRow[]>([]);
   const [prefsSaving, setPrefsSaving] = useState(false);
@@ -115,10 +119,14 @@ export default function PreferencesPage() {
     const data = await res.json().catch(() => ({}));
     setPrefsSaving(false);
     if (!res.ok) {
-      setError(data.error ?? "Failed to save preferences");
+      const msg = data.error ?? "Failed to save preferences";
+      setError(msg);
+      showToast(msg, "error");
       return;
     }
     setMessage("Preferences saved");
+    showToast("Preferences saved", "success");
+    router.refresh();
     try {
       await createClient().auth.updateUser({ data: { timezone_set: true } });
     } catch {
@@ -128,7 +136,9 @@ export default function PreferencesPage() {
 
   async function addWindow() {
     if (newDay === "") {
-      setError("Choose a day for this work window.");
+      const msg = "Choose a day for this work window.";
+      setError(msg);
+      showToast(msg, "error");
       return;
     }
     setWindowBusy(true);
@@ -143,7 +153,9 @@ export default function PreferencesPage() {
     const data = await res.json().catch(() => ({}));
     setWindowBusy(false);
     if (!res.ok) {
-      setError(data.error ?? "Failed to add window");
+      const msg = data.error ?? "Failed to add window";
+      setError(msg);
+      showToast(msg, "error");
       return;
     }
 
@@ -159,6 +171,8 @@ export default function PreferencesPage() {
     setMessage(
       `Added ${WEEKDAY_FULL[row.day_of_week]} window (${formatTimeHhmmssTo12h(row.start_time)} – ${formatTimeHhmmssTo12h(row.end_time)}).`
     );
+    showToast("Work window added", "success");
+    router.refresh();
     setNewStart("09:00:00");
     setNewEnd("17:00:00");
     setShowAddWindowForm(false);
@@ -173,12 +187,16 @@ export default function PreferencesPage() {
     const data = await res.json().catch(() => ({}));
     setWindowBusy(false);
     if (!res.ok) {
-      setError(data.error ?? "Failed to remove window");
+      const msg = data.error ?? "Failed to remove window";
+      setError(msg);
+      showToast(msg, "error");
       return;
     }
 
     setWindows((prev) => prev.filter((w) => w.id !== id));
     setMessage("Window removed");
+    showToast("Window removed", "success");
+    router.refresh();
   }
 
   return (
@@ -279,6 +297,13 @@ export default function PreferencesPage() {
             </button>
           )}
         </div>
+
+        {windows.length === 0 && (
+          <p className="mt-3 rounded-lg border border-dashed border-palette-card-border bg-palette-cream/40 px-3 py-2 text-xs text-palette-slate">
+            AI scheduling uses your work windows to place focused blocks. Add at least one window with{" "}
+            <span className="font-medium text-palette-navy">Add work window</span> above.
+          </p>
+        )}
 
         {showAddWindowForm && (
           <div className="mt-3 rounded-lg border border-palette-card-border bg-palette-cream/50 p-3">

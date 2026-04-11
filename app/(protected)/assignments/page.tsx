@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { TodoAssignmentBoard } from "@/components/TodoAssignmentBoard";
 
@@ -44,6 +45,18 @@ export default async function AssignmentsPage() {
           All assignments across classes. Sort and manage in one place.
         </p>
       </div>
+      {items.length === 0 && (
+        <div className="ds-card border-dashed p-6">
+          <p className="text-sm font-medium text-palette-navy">No assignments yet</p>
+          <p className="mt-2 text-sm text-palette-slate">
+            Assignments belong to a class. Open a class and use <strong>Add assignment</strong>, or go to{" "}
+            <Link href="/classes" className="font-medium text-palette-navy underline-offset-2 hover:underline">
+              Classes
+            </Link>{" "}
+            to set up your courses first.
+          </p>
+        </div>
+      )}
       <TodoAssignmentBoard assignments={items} />
     </div>
   );

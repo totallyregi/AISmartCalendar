@@ -19,6 +19,7 @@ const ConfirmContext = createContext<((opts: ConfirmOptions) => Promise<boolean>
 export function ConfirmDialogProvider({ children }: { children: React.ReactNode }) {
   const [pending, setPending] = useState<Pending | null>(null);
   const pendingRef = useRef<Pending | null>(null);
+  const cancelButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const close = useCallback((result: boolean) => {
     const p = pendingRef.current;
@@ -44,6 +45,16 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [pending, close]);
+
+  useEffect(() => {
+    if (!pending) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const id = requestAnimationFrame(() => cancelButtonRef.current?.focus());
+    return () => {
+      cancelAnimationFrame(id);
+      previous?.focus?.();
+    };
+  }, [pending]);
 
   return (
     <ConfirmContext.Provider value={requestConfirm}>
@@ -71,6 +82,7 @@ export function ConfirmDialogProvider({ children }: { children: React.ReactNode 
             </p>
             <div className="mt-6 flex flex-wrap justify-end gap-2">
               <button
+                ref={cancelButtonRef}
                 type="button"
                 className="rounded-lg border-[0.5px] border-palette-card-border bg-palette-card-bg px-4 py-2 text-sm font-medium text-palette-navy transition-colors hover:bg-palette-hover"
                 onClick={() => close(false)}

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { zonedDateTimeToUtc } from "@/lib/timezone";
 import type { CalendarTimelineEvent } from "@/lib/calendarTimelineEvent";
-import { EventEditModal } from "@/components/EventEditModal";
+import { EventEditModal, resolveEventEditKind } from "@/components/EventEditModal";
 import { useCalendarTimelineActions } from "@/hooks/useCalendarTimelineActions";
 import { TimelineEventActionButtons } from "@/components/TimelineEventActionButtons";
 
@@ -86,6 +86,7 @@ export function DayAgendaModal({
   onClose: () => void;
 }) {
   const [editing, setEditing] = useState<CalendarTimelineEvent | null>(null);
+  const [sheetEntered, setSheetEntered] = useState(false);
   const actions = useCalendarTimelineActions(date);
 
   useEffect(() => {
@@ -93,13 +94,24 @@ export function DayAgendaModal({
   }, [open, date]);
 
   useEffect(() => {
+    if (!open) {
+      setSheetEntered(false);
+      return;
+    }
+    const id = requestAnimationFrame(() => setSheetEntered(true));
+    return () => cancelAnimationFrame(id);
+  }, [open]);
+
+  useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape") return;
+      if (editing) setEditing(null);
+      else onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, onClose, editing]);
 
   const sorted = useMemo(
     () =>
@@ -138,7 +150,11 @@ export function DayAgendaModal({
       aria-labelledby="day-agenda-title"
     >
       <button type="button" className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" aria-label="Close" onClick={onClose} />
-      <div className="relative flex max-h-[min(94vh,920px)] w-full max-w-[min(96vw,56rem)] flex-col overflow-hidden rounded-t-2xl border border-zinc-200/90 bg-white shadow-2xl ring-1 ring-black/5 dark:border-zinc-600 dark:bg-zinc-900 dark:ring-white/10 sm:rounded-2xl">
+      <div
+        className={`relative flex max-h-[min(94vh,920px)] w-full max-w-[min(96vw,56rem)] flex-col overflow-hidden rounded-t-2xl border border-zinc-200/90 bg-white shadow-2xl ring-1 ring-black/5 transition-[transform,opacity] duration-200 ease-out motion-reduce:transition-none dark:border-zinc-600 dark:bg-zinc-900 dark:ring-white/10 sm:rounded-2xl ${
+          sheetEntered ? "translate-y-0 opacity-100 sm:scale-100" : "translate-y-5 opacity-0 sm:translate-y-0 sm:scale-[0.97]"
+        }`}
+      >
         <div className="flex shrink-0 items-start justify-between gap-4 border-b border-zinc-200 px-5 py-4 dark:border-zinc-700 sm:px-6">
           <div>
             <h2 id="day-agenda-title" className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-xl">
@@ -172,21 +188,39 @@ export function DayAgendaModal({
                       </span>
                     </div>
                   ))}
-                  <div className="absolute inset-0 ml-[3.25rem] pr-1 sm:ml-14 sm:pr-2">
-                    {blocks.map(({ e, topPct, heightPct }, idx) => (
-                      <div
-                        key={`${e.id}-${idx}`}
-                        className={`absolute left-0 right-0 overflow-hidden rounded-lg border-l-[3px] px-3 py-1.5 text-left text-xs leading-snug shadow-sm ring-1 ring-black/5 dark:ring-white/10 ${sourceCls[e.source]}`}
-                        style={{
-                          top: `${topPct}%`,
-                          height: `${Math.max(heightPct, 1.1)}%`,
-                          minHeight: 28,
-                        }}
-                        title={e.title}
-                      >
-                        <span className="line-clamp-3 font-medium">{e.title}</span>
-                      </div>
-                    ))}
+                                   <div className="absolute inset-0 ml-[3.25rem] pr-1 sm:ml-14 sm:pr-2">
+                    {blocks.map(({ e, topPct, heightPct }, idx) => {
+                      const canEdit = resolveEventEditKind(e, mode) !== null;
+                      const style = {
+                        top: `${topPct}%`,
+                        height: `${Math.max(heightPct, 1.1)}%`,
+                        minHeight: 28,
+                      } as const;
+                      const cls = `absolute left-0 right-0 overflow-hidden rounded-lg border-l-[3px] px-3 py-1.5 text-left text-xs leading-snug shadow-sm ring-1 ring-black/5 dark:ring-white/10 ${sourceCls[e.source]} ${
+                        canEdit
+                          ? "cursor-pointer hover:brightness-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-500"
+                          : ""
+                      }`;
+                      if (canEdit) {
+                        return (
+                          <button
+                            key={`${e.id}-${idx}`}
+                            type="button"
+                            className={cls}
+                            style={style}
+                            title={`${e.title} — Edit`}
+                            onClick={() => setEditing(e)}
+                          >
+                            <span className="line-clamp-3 font-medium">{e.title}</span>
+                          </button>
+                        );
+                      }
+                      return (
+                        <div key={`${e.id}-${idx}`} className={cls} style={style} title={e.title}>
+                          <span className="line-clamp-3 font-medium">{e.title}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

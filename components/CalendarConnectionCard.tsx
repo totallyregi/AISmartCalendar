@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ToastProvider";
 
 export function CalendarConnectionCard() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [connected, setConnected] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
@@ -36,10 +38,14 @@ export function CalendarConnectionCard() {
     const data = await res.json().catch(() => ({}));
     setLoading(false);
     if (!res.ok) {
-      setError(data.error ?? "Sync failed");
+      const err = data.error ?? "Sync failed";
+      setError(err);
+      showToast(err, "error");
       return;
     }
-    setMessage(`Google sync complete (${data.imported ?? 0} events)`);
+    const msg = `Google sync complete (${data.imported ?? 0} events)`;
+    setMessage(msg);
+    showToast(msg, "success");
     router.refresh();
   }
 
@@ -51,6 +57,7 @@ export function CalendarConnectionCard() {
     await refreshStatus();
     setLoading(false);
     setMessage("Google calendar disconnected");
+    showToast("Google calendar disconnected", "success");
   }
 
   return (

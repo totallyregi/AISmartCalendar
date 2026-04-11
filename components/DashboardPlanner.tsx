@@ -5,6 +5,7 @@ import { useConfirm } from "@/components/ConfirmDialogProvider";
 import type { SchedulerMode } from "@/lib/types";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ToastProvider";
 
 function addDays(date: Date, days: number) {
   const d = new Date(date);
@@ -66,6 +67,7 @@ export function DashboardPlanner({
   hasCurrentPlan: boolean;
 }) {
   const router = useRouter();
+  const { showToast } = useToast();
   const confirm = useConfirm();
   const [generateTargetWeek, setGenerateTargetWeek] = useState(currentWeek);
   const [mode, setMode] = useState<SchedulerMode>("relaxed");
@@ -178,10 +180,13 @@ export function DashboardPlanner({
     const data = await res.json().catch(() => ({}));
     setLoading(false);
     if (!res.ok) {
-      setError(data.error ?? "Generate failed");
+      const err = data.error ?? "Generate failed";
+      setError(err);
+      showToast(err, "error");
       return;
     }
     const assignmentTimeLabel = formatAssignmentDuration(Number(data.assignmentMinutes ?? 0));
+    showToast(`Generated ${data.blocks ?? 0} suggested blocks for this week`, "success");
     setMessage(
       `Generated ${data.blocks ?? 0} suggested blocks (${assignmentTimeLabel} assignment time) for week ${data.weekStart} in ${data.mode ?? mode} mode`
     );
@@ -226,9 +231,12 @@ export function DashboardPlanner({
     const data = await res.json().catch(() => ({}));
     setLoading(false);
     if (!res.ok) {
-      setError(data.error ?? "Reset failed");
+      const err = data.error ?? "Reset failed";
+      setError(err);
+      showToast(err, "error");
       return;
     }
+    showToast("AI draft suggestions reset", "success");
     setMessage(
       `Removed unapplied drafts for ${data.resetWeeks ?? 0} week(s). Your applied weeks still count toward what to generate next.`
     );
@@ -248,9 +256,12 @@ export function DashboardPlanner({
     const data = await res.json().catch(() => ({}));
     setLoading(false);
     if (!res.ok) {
-      setError(data.error ?? "Apply failed");
+      const err = data.error ?? "Apply failed";
+      setError(err);
+      showToast(err, "error");
       return;
     }
+    showToast(`Applied ${data.applied ?? 0} events to your main calendar`, "success");
     setMessage(`Applied ${data.applied ?? 0} AI events to your main Calendar`);
     setInsights([]);
     setInsightsFetchError(null);
@@ -267,6 +278,17 @@ export function DashboardPlanner({
       <div>
         <h2 className="text-lg font-semibold text-palette-navy">Suggestion Controls</h2>
         <p className="mt-1 text-xs text-palette-slate">Generate in AI Calendar first, then apply to your main Calendar when ready.</p>
+        <details className="mt-2 rounded-lg border border-palette-card-border bg-palette-muted-panel/40 px-3 py-2 text-palette-navy">
+          <summary className="cursor-pointer text-xs font-medium text-palette-slate marker:text-palette-slate">
+            How this works
+          </summary>
+          <p className="mt-2 text-xs leading-relaxed text-palette-slate">
+            Pick a week and mode, generate draft blocks, review them on this AI Calendar, then apply when you want them copied to your main Calendar.
+            <Link href="/help#calendar-vs-ai" className="ml-1 font-medium text-palette-navy underline-offset-2 hover:underline">
+              More in Help
+            </Link>
+          </p>
+        </details>
       </div>
 
       <section className={inner}>

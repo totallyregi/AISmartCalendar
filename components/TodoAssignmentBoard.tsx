@@ -1,6 +1,7 @@
 "use client";
 
 import { useConfirm } from "@/components/ConfirmDialogProvider";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { Assignment } from "@/lib/types";
 import { formatDueDateTime } from "@/lib/datetimeDisplay";
@@ -35,6 +36,7 @@ function sortAssignments(items: AssignmentWithClass[], sortBy: SortKey) {
 type TodoTab = "incomplete" | "completed";
 
 export function TodoAssignmentBoard({ assignments }: { assignments: AssignmentWithClass[] }) {
+  const router = useRouter();
   const confirm = useConfirm();
   const [editing, setEditing] = useState<AssignmentWithClass | null>(null);
   const [sortBy, setSortBy] = useState<SortKey>("due_asc");
@@ -141,12 +143,12 @@ export function TodoAssignmentBoard({ assignments }: { assignments: AssignmentWi
                           confirmLabel: "Mark done",
                         });
                         if (!ok) return;
-                        await fetch(`/api/assignments/${a.id}`, {
+                        const res = await fetch(`/api/assignments/${a.id}`, {
                           method: "PUT",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ status: "done" }),
                         });
-                        window.location.reload();
+                        if (res.ok) router.refresh();
                       }}
                       className="text-sm font-medium text-palette-green"
                     >
@@ -165,8 +167,8 @@ export function TodoAssignmentBoard({ assignments }: { assignments: AssignmentWi
                           tone: "danger",
                         });
                         if (!delOk) return;
-                        await fetch(`/api/assignments/${a.id}`, { method: "DELETE" });
-                        window.location.reload();
+                        const res = await fetch(`/api/assignments/${a.id}`, { method: "DELETE" });
+                        if (res.ok) router.refresh();
                       }}
                       className="text-sm text-red-600"
                     >
@@ -183,7 +185,10 @@ export function TodoAssignmentBoard({ assignments }: { assignments: AssignmentWi
                     assignment={a}
                     classId={a.class_id}
                     onClose={() => setEditing(null)}
-                    onSaved={() => window.location.reload()}
+                    onSaved={() => {
+                      setEditing(null);
+                      router.refresh();
+                    }}
                     className="border-0 bg-transparent p-0 shadow-none"
                   />
                 </div>
@@ -225,8 +230,8 @@ export function TodoAssignmentBoard({ assignments }: { assignments: AssignmentWi
                           tone: "danger",
                         });
                         if (!delOk) return;
-                        await fetch(`/api/assignments/${a.id}`, { method: "DELETE" });
-                        window.location.reload();
+                        const res = await fetch(`/api/assignments/${a.id}`, { method: "DELETE" });
+                        if (res.ok) router.refresh();
                       }}
                       className="text-sm text-red-600"
                     >
@@ -243,7 +248,10 @@ export function TodoAssignmentBoard({ assignments }: { assignments: AssignmentWi
                     assignment={a}
                     classId={a.class_id}
                     onClose={() => setEditing(null)}
-                    onSaved={() => window.location.reload()}
+                    onSaved={() => {
+                      setEditing(null);
+                      router.refresh();
+                    }}
                     className="border-0 bg-transparent p-0 shadow-none"
                   />
                 </div>

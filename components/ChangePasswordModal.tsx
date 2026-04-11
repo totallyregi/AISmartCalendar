@@ -1,14 +1,34 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/ToastProvider";
 
 export function ChangePasswordModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const router = useRouter();
+  const { showToast } = useToast();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const firstPasswordRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  useEffect(() => {
+    if (!open) return;
+    const t = window.setTimeout(() => firstPasswordRef.current?.focus(), 0);
+    return () => window.clearTimeout(t);
+  }, [open]);
 
   if (!open) return null;
 
@@ -39,11 +59,15 @@ export function ChangePasswordModal({ open, onClose }: { open: boolean; onClose:
 
     setLoading(false);
     setMessage("Password updated successfully.");
+    showToast("Password updated", "success");
     setTimeout(() => {
       onClose();
-      // Ensure the auth session reflects the updated credentials.
-      window.location.reload();
-    }, 900);
+      setNewPassword("");
+      setConfirmPassword("");
+      setMessage(null);
+      // RSC refresh; use a full page reload if session ever looks stale after password change.
+      router.refresh();
+    }, 600);
   }
 
   return (
@@ -78,6 +102,7 @@ export function ChangePasswordModal({ open, onClose }: { open: boolean; onClose:
           <div>
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">New password</label>
             <input
+              ref={firstPasswordRef}
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}

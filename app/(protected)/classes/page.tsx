@@ -14,12 +14,15 @@ export default async function ClassesPage() {
   return (
     <div className="space-y-6 animate-in">
       <h1 className="text-2xl font-medium text-palette-navy">Classes</h1>
-      <ClassList classes={classes} />
       {classes.length === 0 && (
-        <p className="text-sm text-palette-slate">
-          Add class code, class name, and weekly meeting times in 15-minute intervals.
-        </p>
+        <div className="ds-card border-dashed p-6">
+          <p className="text-sm font-medium text-palette-navy">No classes yet</p>
+          <p className="mt-2 text-sm text-palette-slate">
+            Add a class code, name, and weekly meeting times (15-minute intervals). Use the <strong>Add class</strong> button below to get started.
+          </p>
+        </div>
       )}
+      <ClassList classes={classes} />
     </div>
   );
 }

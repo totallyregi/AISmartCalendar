@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { WEEKDAY_FULL } from "@/lib/datetimeDisplay";
 import { zonedDateKeyFromIso } from "@/lib/timezone";
@@ -61,6 +61,7 @@ export function CalendarView({
   monthAgendaEvents?: DayAgendaEvent[];
 }) {
   const router = useRouter();
+  const [isNavPending, startTransition] = useTransition();
   const [agendaOpen, setAgendaOpen] = useState(false);
   const [agendaDate, setAgendaDate] = useState<string | null>(null);
 
@@ -81,7 +82,9 @@ export function CalendarView({
   function openDay(dateStr: string) {
     setAgendaDate(dateStr);
     setAgendaOpen(true);
-    router.push(`${basePath}?year=${year}&month=${month}&date=${dateStr}`, { scroll: false });
+    startTransition(() => {
+      router.push(`${basePath}?year=${year}&month=${month}&date=${dateStr}`, { scroll: false });
+    });
   }
   const first = new Date(year, month - 1, 1);
   const last = new Date(year, month, 0);
@@ -103,13 +106,17 @@ export function CalendarView({
   function prevMonth() {
     const m = month === 1 ? 12 : month - 1;
     const y = month === 1 ? year - 1 : year;
-    router.push(`${basePath}?year=${y}&month=${m}`, { scroll: false });
+    startTransition(() => {
+      router.push(`${basePath}?year=${y}&month=${m}`, { scroll: false });
+    });
   }
 
   function nextMonth() {
     const m = month === 12 ? 1 : month + 1;
     const y = month === 12 ? year + 1 : year;
-    router.push(`${basePath}?year=${y}&month=${m}`, { scroll: false });
+    startTransition(() => {
+      router.push(`${basePath}?year=${y}&month=${m}`, { scroll: false });
+    });
   }
 
   function formatPreviewTime(iso: string) {
@@ -136,7 +143,16 @@ export function CalendarView({
 
   return (
     <div className="animate-in">
-      <div className="ds-card overflow-hidden p-4 sm:p-5">
+      {isNavPending && (
+        <p
+          className="mb-3 rounded-lg border border-palette-card-border bg-palette-sky/15 px-3 py-2 text-center text-sm font-medium text-palette-navy motion-reduce:transition-none"
+          role="status"
+          aria-live="polite"
+        >
+          Updating calendar…
+        </p>
+      )}
+      <div className="relative ds-card overflow-hidden p-4 sm:p-5">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-medium text-palette-navy">
             {MONTH_NAMES[month - 1]} {year}
