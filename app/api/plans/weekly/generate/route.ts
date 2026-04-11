@@ -265,7 +265,8 @@ export async function POST(request: Request) {
     if (dx !== 0) return dx;
     const rx = assignmentRemaining.get(x.id) ?? 0;
     const ry = assignmentRemaining.get(y.id) ?? 0;
-    if (rx !== ry) return rx - ry;
+    // Same due date: larger remaining first so long assignments finish before shorter ones (matches “A3h then B 1h”).
+    if (rx !== ry) return ry - rx;
     return String(x.name ?? "").localeCompare(String(y.name ?? ""), undefined, { sensitivity: "base" });
   });
 
@@ -357,11 +358,18 @@ export async function POST(request: Request) {
     });
 
     reserveRange(used, slots, i, bestTake);
-    assignmentRemaining.set(a.id, Math.max(0, remaining - placedMinutes));
+    const newRemaining = Math.max(0, remaining - placedMinutes);
+    assignmentRemaining.set(a.id, newRemaining);
     dayAssignedMinutes.set(bestDayKey, (dayAssignedMinutes.get(bestDayKey) ?? 0) + placedMinutes);
 
+    // Break after a chunk only when this assignment still has work left: e.g. 3h total, max 2h
+    // consecutive → place 2h, reserve break_minutes, then place the remaining 1h for the same A
+    // before any lower-priority assignment runs. When A is finished (newRemaining === 0), do not
+    // reserve break so the next assignment can start in the next free slot.
     const breakIntervals = Math.floor(prefs.break_minutes / 15);
-    if (breakIntervals > 0) reserveRange(used, slots, i + bestTake, breakIntervals);
+    if (breakIntervals > 0 && newRemaining > 0) {
+      reserveRange(used, slots, i + bestTake, breakIntervals);
+    }
 
     return true;
   }
