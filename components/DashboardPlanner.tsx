@@ -323,9 +323,9 @@ export function DashboardPlanner({
               onChange={(e) => setMode(e.target.value as SchedulerMode)}
               className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-slate"
             >
-              <option value="intense">Intense (finish faster)</option>
-              <option value="relaxed">Relaxed (target preferred hours)</option>
-              <option value="lazy">Lazy (minimum daily effort)</option>
+              <option value="intense">Intense (cap AI work at max daily hours)</option>
+              <option value="relaxed">Relaxed (cap at preferred daily hours)</option>
+              <option value="lazy">Lazy (cap at minimum daily hours)</option>
             </select>
           </div>
           <div className="flex items-end">

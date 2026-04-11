@@ -217,6 +217,8 @@ export async function POST(request: Request) {
   const mergedBusy = mergeIntervals(busy);
   const daySlots = new Map<string, Interval[]>();
   const dayUsed = new Map<string, Set<number>>();
+  /** Start timestamps (ms) of 15m slots used for AI assignment blocks this run — for max-consecutive breaks. */
+  const dayAssignmentSlotStarts = new Map<string, Set<number>>();
   /** AI assignment minutes placed this run only — not classes/habits/personal (those only shrink free slots via mergedBusy). */
   const dayAssignedMinutes = new Map<string, number>();
 
@@ -228,6 +230,7 @@ export async function POST(request: Request) {
     if (dow === 0) {
       daySlots.set(dateKey, []);
       dayUsed.set(dateKey, new Set<number>());
+      dayAssignmentSlotStarts.set(dateKey, new Set<number>());
       dayAssignedMinutes.set(dateKey, 0);
       continue;
     }
@@ -239,6 +242,7 @@ export async function POST(request: Request) {
     const free = removeBusy(allowed, mergedBusy).filter((slot) => slot.start >= now);
     daySlots.set(dateKey, free);
     dayUsed.set(dateKey, new Set<number>());
+    dayAssignmentSlotStarts.set(dateKey, new Set<number>());
     dayAssignedMinutes.set(dateKey, 0);
   }
 
@@ -270,116 +274,125 @@ export async function POST(request: Request) {
     return String(x.name ?? "").localeCompare(String(y.name ?? ""), undefined, { sensitivity: "base" });
   });
 
-  // Mon–Sat only (skip Sunday index 0): i = 1..6
+  // Mon–Sat only (skip Sunday index 0): i = 1..6 — same calendar order for all modes.
   const dayOrderForward = [1, 2, 3, 4, 5, 6].map((i) => addDaysToDateKey(weekStartDate, i, timeZone));
-  const dayOrderBackward = [...dayOrderForward].reverse();
 
-  function tryPlaceBestChunkForAssignment(
-    a: { id: string; name: string; due_at: string },
-    slotMap: Map<string, Interval[]>,
-    usePreferredDayCap: boolean
-  ): boolean {
+  /** Minutes of contiguous AI assignment slots ending exactly where slots[startIndex] starts (excludes slot at startIndex). */
+  function minutesAbuttingAssignmentRunBefore(
+    slots: Interval[],
+    assignmentStarts: Set<number>,
+    startIndex: number
+  ): number {
+    let m = 0;
+    let j = startIndex - 1;
+    while (
+      j >= 0 &&
+      slots[j].end.getTime() === slots[j + 1].start.getTime() &&
+      assignmentStarts.has(slots[j].start.getTime())
+    ) {
+      m += 15;
+      j--;
+    }
+    return m;
+  }
+
+  /** Total minutes in the contiguous assignment run that includes slots[endIdxInclusive]. */
+  function contiguousAssignmentRunThrough(slots: Interval[], assignmentStarts: Set<number>, endIdxInclusive: number): number {
+    let m = 0;
+    let j = endIdxInclusive;
+    while (j >= 0 && assignmentStarts.has(slots[j].start.getTime())) {
+      m += 15;
+      if (j === 0) break;
+      if (slots[j - 1].end.getTime() !== slots[j].start.getTime()) break;
+      j--;
+    }
+    return m;
+  }
+
+  const maxConsecutiveAssignmentMins =
+    prefs.max_consecutive_minutes > 0 ? Math.floor(prefs.max_consecutive_minutes / 15) * 15 : 0;
+
+  /**
+   * One 15m slot at the earliest valid time. Modes differ only by daily cap (min / preferred / max).
+   * Max consecutive + break_minutes apply to contiguous generated assignment work.
+   */
+  function tryPlaceOneAssignmentSlot(a: { id: string; name: string; due_at: string }, slotMap: Map<string, Interval[]>): boolean {
     const remaining = assignmentRemaining.get(a.id) ?? 0;
-    if (remaining <= 0) return false;
+    if (remaining < 15) return false;
 
     const due = new Date(a.due_at);
-    const dayOrder = mode === "lazy" ? dayOrderBackward : dayOrderForward;
-    const preferEarlierStart = mode !== "lazy";
+    let dayTarget = modeDailyTarget(mode, prefs.min_daily_minutes, prefs.preferred_daily_minutes, prefs.max_daily_minutes);
+    dayTarget = Math.min(dayTarget, prefs.max_daily_minutes);
 
-    let bestTake = 0;
     let bestDayKey: string | null = null;
     let bestIndex = -1;
-    let bestStartMs = preferEarlierStart ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
+    let bestStartMs = Number.POSITIVE_INFINITY;
 
-    for (const dayKey of dayOrder) {
+    for (const dayKey of dayOrderForward) {
       const slots = slotMap.get(dayKey) ?? [];
       const used = dayUsed.get(dayKey) ?? new Set<number>();
+      const assignmentStarts = dayAssignmentSlotStarts.get(dayKey) ?? new Set<number>();
       const already = dayAssignedMinutes.get(dayKey) ?? 0;
-
-      let dayRemaining: number;
-      if (usePreferredDayCap) {
-        let dayTarget = modeDailyTarget(mode, prefs.min_daily_minutes, prefs.preferred_daily_minutes, prefs.max_daily_minutes);
-        dayTarget = Math.min(dayTarget, prefs.max_daily_minutes);
-        dayRemaining = Math.max(0, dayTarget - already);
-        if (mode === "lazy" && remaining < dayRemaining) dayRemaining = remaining;
-      } else {
-        dayRemaining = Math.max(0, prefs.max_daily_minutes - already);
-        if (mode === "lazy" && remaining < dayRemaining) dayRemaining = remaining;
-      }
-
-      const maxIntervalsByConsecutive = Math.floor(prefs.max_consecutive_minutes / 15);
-      const maxIntervalsByDay = Math.floor(dayRemaining / 15);
-      // At least one 15m slot if any work remains (estimates are normally multiples of 15).
-      const maxIntervalsByRemaining = remaining <= 0 ? 0 : Math.max(1, Math.ceil(remaining / 15));
+      const dayRemaining = Math.max(0, dayTarget - already);
+      if (dayRemaining < 15) continue;
 
       for (let i = 0; i < slots.length; i++) {
         if (isUsed(used, slots[i])) continue;
         if (slots[i].start < now) continue;
         if (slots[i].start.getTime() >= due.getTime()) continue;
+        if (slots[i].end.getTime() > due.getTime()) continue;
 
-        const contiguous = contiguousCount(slots, i);
-        let takeIntervals = Math.min(contiguous, maxIntervalsByConsecutive, maxIntervalsByDay, maxIntervalsByRemaining);
-
-        while (takeIntervals > 0) {
-          const chunkEnd = slots[i + takeIntervals - 1].end;
-          if (chunkEnd.getTime() <= due.getTime()) break;
-          takeIntervals -= 1;
+        if (maxConsecutiveAssignmentMins > 0) {
+          const abutting = minutesAbuttingAssignmentRunBefore(slots, assignmentStarts, i);
+          if (abutting + 15 > maxConsecutiveAssignmentMins) continue;
         }
 
-        if (takeIntervals <= 0) continue;
-
         const startMs = slots[i].start.getTime();
-        const betterTie = preferEarlierStart ? startMs < bestStartMs : startMs > bestStartMs;
-        if (takeIntervals > bestTake || (takeIntervals === bestTake && betterTie)) {
-          bestTake = takeIntervals;
+        if (startMs < bestStartMs) {
+          bestStartMs = startMs;
           bestDayKey = dayKey;
           bestIndex = i;
-          bestStartMs = startMs;
         }
       }
     }
 
-    if (bestTake <= 0 || bestDayKey === null || bestIndex < 0) return false;
+    if (bestDayKey === null || bestIndex < 0) return false;
 
     const slots = slotMap.get(bestDayKey) ?? [];
     const used = dayUsed.get(bestDayKey) ?? new Set<number>();
+    const assignmentStarts = dayAssignmentSlotStarts.get(bestDayKey) ?? new Set<number>();
     const i = bestIndex;
-
-    const start = slots[i].start;
-    const end = slots[i + bestTake - 1].end;
-    const placedMinutes = bestTake * 15;
 
     blocks.push({
       block_type: "assignment",
       title: a.name,
-      starts_at: start.toISOString(),
-      ends_at: end.toISOString(),
+      starts_at: slots[i].start.toISOString(),
+      ends_at: slots[i].end.toISOString(),
       assignment_id: a.id,
     });
 
-    reserveRange(used, slots, i, bestTake);
-    const newRemaining = Math.max(0, remaining - placedMinutes);
-    assignmentRemaining.set(a.id, newRemaining);
-    dayAssignedMinutes.set(bestDayKey, (dayAssignedMinutes.get(bestDayKey) ?? 0) + placedMinutes);
+    used.add(slots[i].start.getTime());
+    assignmentStarts.add(slots[i].start.getTime());
+    assignmentRemaining.set(a.id, remaining - 15);
+    dayAssignedMinutes.set(bestDayKey, (dayAssignedMinutes.get(bestDayKey) ?? 0) + 15);
 
-    // Break after a chunk only when this assignment still has work left: e.g. 3h total, max 2h
-    // consecutive → place 2h, reserve break_minutes, then place the remaining 1h for the same A
-    // before any lower-priority assignment runs. When A is finished (newRemaining === 0), do not
-    // reserve break so the next assignment can start in the next free slot.
-    const breakIntervals = Math.floor(prefs.break_minutes / 15);
-    if (breakIntervals > 0 && newRemaining > 0) {
-      reserveRange(used, slots, i + bestTake, breakIntervals);
+    if (maxConsecutiveAssignmentMins > 0) {
+      const runThrough = contiguousAssignmentRunThrough(slots, assignmentStarts, i);
+      if (runThrough >= maxConsecutiveAssignmentMins) {
+        const breakIntervals = Math.floor(prefs.break_minutes / 15);
+        if (breakIntervals > 0) reserveRange(used, slots, i + 1, breakIntervals);
+      }
     }
 
     return true;
   }
 
-  function placeAssignmentPass(slotMap: Map<string, Interval[]>, usePreferredDayCap: boolean) {
+  function placeAllAssignmentSlots(slotMap: Map<string, Interval[]>) {
     let progress = true;
     while (progress) {
       progress = false;
       for (const a of assignments) {
-        if (tryPlaceBestChunkForAssignment(a, slotMap, usePreferredDayCap)) {
+        if (tryPlaceOneAssignmentSlot(a, slotMap)) {
           progress = true;
           break;
         }
@@ -387,10 +400,7 @@ export async function POST(request: Request) {
     }
   }
 
-  // Assignments only inside preferred work windows (no early-morning / full-day overflow).
-  placeAssignmentPass(daySlots, true);
-  // Second pass: fill toward max_daily_minutes where first pass stopped at preferred/min targets.
-  placeAssignmentPass(daySlots, false);
+  placeAllAssignmentSlots(daySlots);
 
   // Flexible habits use mode-aware frequency and preferred-hour placement.
   const flexHabits = (flexHabitRes.data ?? []) as {
