@@ -57,6 +57,7 @@ type GenerateSummary = {
   perDay?: Record<string, number>;
   unscheduled: unknown[];
   warning?: string;
+  schedulingNotices?: string[];
 };
 
 export function DashboardPlanner({
@@ -73,7 +74,7 @@ export function DashboardPlanner({
   const [mode, setMode] = useState<SchedulerMode>("relaxed");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [scheduleWarning, setScheduleWarning] = useState<string | null>(null);
+  const [schedulingNotices, setSchedulingNotices] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<PlannerStatus | null>(null);
   const [preferencesConfigured, setPreferencesConfigured] = useState(false);
@@ -166,7 +167,7 @@ export function DashboardPlanner({
     setLoading(true);
     setError(null);
     setMessage(null);
-    setScheduleWarning(null);
+    setSchedulingNotices([]);
     setInsights([]);
     setInsightsFetchError(null);
     const res = await fetch("/api/plans/weekly/generate", {
@@ -191,14 +192,10 @@ export function DashboardPlanner({
       `Generated ${data.blocks ?? 0} suggested blocks (${assignmentTimeLabel} assignment time) for week ${data.weekStart} in ${data.mode ?? mode} mode`
     );
     const unsched = Array.isArray(data.unscheduled) ? data.unscheduled : [];
-    if (unsched.length > 0) {
-      const detail = unsched
-        .map((u: { name: string; remainingMinutes: number }) => `${u.name} (${u.remainingMinutes} min not scheduled)`)
-        .join("; ");
-      setScheduleWarning(`${data.warning ?? "Some assignment time could not fit before due dates."} ${detail}`);
-    } else {
-      setScheduleWarning(null);
-    }
+    const notices = Array.isArray(data.schedulingNotices)
+      ? (data.schedulingNotices as unknown[]).filter((x): x is string => typeof x === "string")
+      : [];
+    setSchedulingNotices(notices);
     const summary: GenerateSummary = {
       weekStart: String(data.weekStart ?? ""),
       mode: String(data.mode ?? mode),
@@ -207,6 +204,7 @@ export function DashboardPlanner({
       perDay: typeof data.perDay === "object" && data.perDay !== null ? (data.perDay as Record<string, number>) : undefined,
       unscheduled: unsched,
       warning: typeof data.warning === "string" ? data.warning : undefined,
+      schedulingNotices: notices.length ? notices : undefined,
     };
     await syncGenerateTargetFromServer();
     router.refresh();
@@ -225,6 +223,7 @@ export function DashboardPlanner({
     setLoading(true);
     setError(null);
     setMessage(null);
+    setSchedulingNotices([]);
     setInsights([]);
     setInsightsFetchError(null);
     const res = await fetch("/api/plans/weekly/reset", { method: "POST" });
@@ -263,6 +262,7 @@ export function DashboardPlanner({
     }
     showToast(`Applied ${data.applied ?? 0} events to your main calendar`, "success");
     setMessage(`Applied ${data.applied ?? 0} AI events to your main Calendar`);
+    setSchedulingNotices([]);
     setInsights([]);
     setInsightsFetchError(null);
     setInsightsLoading(false);
@@ -366,7 +366,11 @@ export function DashboardPlanner({
         </div>
       </section>
 
-      {(message || insightsLoading || insights.length > 0 || insightsFetchError) && (
+      {(message ||
+        insightsLoading ||
+        insights.length > 0 ||
+        insightsFetchError ||
+        schedulingNotices.length > 0) && (
         <div
           className="rounded-xl border border-palette-green/35 bg-palette-green/10 p-4"
           aria-busy={insightsLoading}
@@ -390,6 +394,28 @@ export function DashboardPlanner({
                   ))}
                 </ul>
               )}
+            </div>
+          )}
+          {schedulingNotices.length > 0 && (
+            <div
+              className={
+                message || insightsLoading || insights.length > 0 || insightsFetchError
+                  ? "mt-4 border-t border-palette-green/30 pt-4"
+                  : ""
+              }
+              aria-live="polite"
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-900 dark:text-amber-200">
+                Scheduling
+              </p>
+              <p className="mt-0.5 text-xs text-palette-slate">
+                These notices come from the generator (not the AI insight model).
+              </p>
+              <ul className="mt-3 list-inside list-disc space-y-2 text-sm leading-relaxed text-amber-950 marker:text-amber-600 dark:text-amber-100 dark:marker:text-amber-400">
+                {schedulingNotices.map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
+              </ul>
             </div>
           )}
         </div>
@@ -445,9 +471,6 @@ export function DashboardPlanner({
         <p className="text-sm text-amber-800/90">You must generate the current week first before future weeks.</p>
       )}
       {error && <p className="text-sm text-red-700">{error}</p>}
-      {scheduleWarning && (
-        <p className="rounded-xl border border-amber-200/80 bg-amber-50/90 p-3 text-sm text-amber-950">{scheduleWarning}</p>
-      )}
     </div>
   );
 }
