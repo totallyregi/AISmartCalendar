@@ -34,7 +34,11 @@ export function ClassList({ classes }: { classes: ClassSection[] }) {
             setAdding(false);
             setEditing(null);
           }}
-          onSaved={() => router.refresh()}
+          onSaved={() => {
+            setAdding(false);
+            setEditing(null);
+            router.refresh();
+          }}
         />
       )}
 
