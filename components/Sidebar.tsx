@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { CLASS_SECTIONS_UPDATED_EVENT } from "@/lib/classEvents";
 
 type ClassItem = { id: string; class_code: string; class_name: string };
 
@@ -26,6 +27,12 @@ export function Sidebar({
 
   useEffect(() => {
     loadClasses();
+  }, [loadClasses]);
+
+  useEffect(() => {
+    const onClassesUpdated = () => loadClasses();
+    window.addEventListener(CLASS_SECTIONS_UPDATED_EVENT, onClassesUpdated);
+    return () => window.removeEventListener(CLASS_SECTIONS_UPDATED_EVENT, onClassesUpdated);
   }, [loadClasses]);
 
   const classesActive = pathname === "/classes" || pathname.startsWith("/classes/");

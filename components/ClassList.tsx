@@ -7,6 +7,7 @@ import { useState } from "react";
 import type { ClassSection } from "@/lib/types";
 import { ClassForm } from "./ClassForm";
 import { ScheduleSlotList } from "./ScheduleSlotList";
+import { notifyClassSectionsUpdated } from "@/lib/classEvents";
 
 export function ClassList({ classes }: { classes: ClassSection[] }) {
   const router = useRouter();
@@ -37,6 +38,7 @@ export function ClassList({ classes }: { classes: ClassSection[] }) {
           onSaved={() => {
             setAdding(false);
             setEditing(null);
+            notifyClassSectionsUpdated();
             router.refresh();
           }}
         />
@@ -67,7 +69,10 @@ export function ClassList({ classes }: { classes: ClassSection[] }) {
                     });
                     if (!ok) return;
                     const delRes = await fetch(`/api/classes/${c.id}`, { method: "DELETE" });
-                    if (delRes.ok) router.refresh();
+                    if (delRes.ok) {
+                      notifyClassSectionsUpdated();
+                      router.refresh();
+                    }
                   }}
                   className="text-sm text-red-600"
                 >

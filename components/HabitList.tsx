@@ -159,7 +159,18 @@ export function HabitList({ habits }: { habits: HabitRow[] }) {
       </button>
 
       {(adding || editing) && (
-        <HabitForm habit={editing ?? undefined} onClose={() => { setAdding(false); setEditing(null); }} onSaved={() => router.refresh()} />
+        <HabitForm
+          habit={editing ?? undefined}
+          onClose={() => {
+            setAdding(false);
+            setEditing(null);
+          }}
+          onSaved={() => {
+            setAdding(false);
+            setEditing(null);
+            router.refresh();
+          }}
+        />
       )}
 
       <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
