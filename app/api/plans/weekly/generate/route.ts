@@ -489,11 +489,10 @@ export async function POST(request: Request) {
     });
 
     const needIntervals = Math.max(1, Math.floor(duration / 15));
-    for (const dow of candidateDows) {
-      const plannedSessions = sessionsByDow.get(dow) ?? 0;
-      if (plannedSessions <= 0) continue;
+    const placeSessionsOnDow = (dow: number, requested: number) => {
+      if (requested <= 0) return 0;
       const dayKey = dayKeyByDow.get(dow);
-      if (!dayKey) continue;
+      if (!dayKey) return 0;
 
       const daySpecificWindows = slotsByDow.get(dow) ?? [];
       const slots =
@@ -503,7 +502,7 @@ export async function POST(request: Request) {
       const used = dayUsed.get(dayKey) ?? new Set<number>();
       let placed = 0;
 
-      for (let idx = 0; idx < slots.length && placed < plannedSessions; idx++) {
+      for (let idx = 0; idx < slots.length && placed < requested; idx++) {
         if (isUsed(used, slots[idx])) continue;
         const contiguous = contiguousCount(slots, idx);
         if (contiguous < needIntervals) continue;
@@ -529,6 +528,28 @@ export async function POST(request: Request) {
         reserveRange(used, slots, idx, needIntervals);
         placed += 1;
       }
+
+      return placed;
+    };
+
+    let placedTotal = 0;
+    for (const dow of candidateDows) {
+      placedTotal += placeSessionsOnDow(dow, sessionsByDow.get(dow) ?? 0);
+    }
+
+    // Backfill unmet sessions onto any remaining eligible day (allows multiple sessions/day).
+    let remaining = targetSessions - placedTotal;
+    while (remaining > 0) {
+      let progress = false;
+      for (const dow of candidateDows) {
+        if (remaining <= 0) break;
+        const extra = placeSessionsOnDow(dow, 1);
+        if (extra > 0) {
+          remaining -= extra;
+          progress = true;
+        }
+      }
+      if (!progress) break;
     }
   }
 
