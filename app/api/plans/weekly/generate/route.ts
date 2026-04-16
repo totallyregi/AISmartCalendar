@@ -18,6 +18,7 @@ import {
   dayOfWeekFromDateKey,
   isValidTimeZone,
   weekStartSundayDateKey,
+  zonedDateKey,
   zonedDateKeyFromIso,
   zonedDateTimeToUtc,
 } from "@/lib/timezone";
@@ -435,6 +436,9 @@ export async function POST(request: Request) {
     if (row.habit_id) flexAlreadyApplied.add(String(row.habit_id));
   }
 
+  /** Only schedule flexible habits on week days that are still today or later (this week may be partial). */
+  const todayDateKey = zonedDateKey(now, timeZone);
+
   for (const h of flexHabits) {
     if (flexAlreadyApplied.has(String(h.id))) continue;
 
@@ -468,7 +472,11 @@ export async function POST(request: Request) {
     }
 
     const rawDows = habitRuleMode === "preferred_days" ? preferredDays : [0, 1, 2, 3, 4, 5, 6];
-    const candidateDows = rawDows.filter((d) => d !== 0);
+    let candidateDows = rawDows.filter((d) => d !== 0);
+    candidateDows = candidateDows.filter((dow) => {
+      const dk = dayKeyByDow.get(dow);
+      return dk != null && dk >= todayDateKey;
+    });
     if (candidateDows.length === 0) continue;
 
     const targetSessions =
