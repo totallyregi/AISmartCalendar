@@ -11,6 +11,8 @@ type AssignmentRow = {
   estimated_minutes: number;
   remaining_minutes: number;
   status: "not_started" | "in_progress" | "done";
+  task_completion_rating: "not_started" | "partially_completed" | "completed";
+  task_quality_rating: number | null;
 };
 
 type ClassRow = {

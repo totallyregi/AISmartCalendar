@@ -6,9 +6,14 @@ import { useEffect, useMemo, useState } from "react";
 import type { Assignment } from "@/lib/types";
 import { formatDueDateTime } from "@/lib/datetimeDisplay";
 import { AssignmentForm } from "./AssignmentForm";
+import { TaskQualityModal } from "./TaskQualityModal";
 
 type AssignmentWithClass = Assignment & { class_code: string; class_name: string };
 type SortKey = "due_asc" | "due_desc" | "alpha" | "class" | "est_desc" | "est_asc";
+
+function formatTaskCompletionRating(rating: Assignment["task_completion_rating"]) {
+  return rating.replaceAll("_", " ");
+}
 
 function sortAssignments(items: AssignmentWithClass[], sortBy: SortKey) {
   const copy = [...items];
@@ -41,6 +46,8 @@ export function TodoAssignmentBoard({ assignments }: { assignments: AssignmentWi
   const [editing, setEditing] = useState<AssignmentWithClass | null>(null);
   const [sortBy, setSortBy] = useState<SortKey>("due_asc");
   const [tab, setTab] = useState<TodoTab>("incomplete");
+  const [ratingTarget, setRatingTarget] = useState<AssignmentWithClass | null>(null);
+  const [ratingLoading, setRatingLoading] = useState(false);
 
   const sorted = useMemo(() => sortAssignments(assignments, sortBy), [assignments, sortBy]);
   const incomplete = sorted.filter((a) => a.status !== "done");
@@ -54,6 +61,32 @@ export function TodoAssignmentBoard({ assignments }: { assignments: AssignmentWi
 
   return (
     <div className="space-y-4">
+      <TaskQualityModal
+        open={!!ratingTarget}
+        assignmentName={ratingTarget?.name ?? ""}
+        loading={ratingLoading}
+        onClose={() => {
+          if (!ratingLoading) setRatingTarget(null);
+        }}
+        onSubmit={async (quality) => {
+          if (!ratingTarget) return;
+          setRatingLoading(true);
+          const res = await fetch(`/api/assignments/${ratingTarget.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              status: "done",
+              task_completion_rating: "completed",
+              task_quality_rating: quality,
+            }),
+          });
+          setRatingLoading(false);
+          if (res.ok) {
+            setRatingTarget(null);
+            router.refresh();
+          }
+        }}
+      />
       <div className="ds-card p-4">
         <label className="text-sm font-medium text-palette-navy">
           Sort by
@@ -131,24 +164,15 @@ export function TodoAssignmentBoard({ assignments }: { assignments: AssignmentWi
                     <p className="text-sm text-palette-slate">
                       Due {formatDueDateTime(a.due_at)} · Estimated Completion Time: {a.estimated_minutes}min
                     </p>
+                    <p className="text-xs text-palette-slate">
+                      Completion: {formatTaskCompletionRating(a.task_completion_rating)} · Quality: {a.task_quality_rating ?? "Not rated"}
+                    </p>
                   </div>
                   <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={async () => {
-                        const ok = await confirm({
-                          title: "Mark assignment done?",
-                          message:
-                            "Mark this assignment as done? Future assignment events from now will be removed from your schedule.",
-                          confirmLabel: "Mark done",
-                        });
-                        if (!ok) return;
-                        const res = await fetch(`/api/assignments/${a.id}`, {
-                          method: "PUT",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ status: "done" }),
-                        });
-                        if (res.ok) router.refresh();
+                        setRatingTarget(a);
                       }}
                       className="text-sm font-medium text-palette-green"
                     >
@@ -214,6 +238,9 @@ export function TodoAssignmentBoard({ assignments }: { assignments: AssignmentWi
                     </p>
                     <p className="text-sm text-palette-slate">
                       Due {formatDueDateTime(a.due_at)} · Estimated Completion Time: {a.estimated_minutes}min
+                    </p>
+                    <p className="text-xs text-palette-slate">
+                      Completion: {formatTaskCompletionRating(a.task_completion_rating)} · Quality: {a.task_quality_rating ?? "Not rated"}
                     </p>
                   </div>
                   <div className="flex gap-2">

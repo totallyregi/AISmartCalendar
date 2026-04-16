@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
+const TASK_COMPLETION_RATINGS = ["not_started", "partially_completed", "completed"] as const;
+
 export async function GET(request: Request) {
   const supabase = await createClient();
   const {
@@ -40,9 +42,19 @@ export async function POST(request: Request) {
   const name = String(body.name ?? "");
   const due_at = String(body.due_at ?? "");
   const estimated_minutes = Number(body.estimated_minutes ?? 0);
+  const task_completion_rating = TASK_COMPLETION_RATINGS.includes(body.task_completion_rating)
+    ? body.task_completion_rating
+    : "not_started";
+  const task_quality_rating =
+    typeof body.task_quality_rating === "number" && Number.isInteger(body.task_quality_rating)
+      ? body.task_quality_rating
+      : null;
 
   if (!class_id || !name || !due_at || !estimated_minutes || estimated_minutes % 15 !== 0) {
     return NextResponse.json({ error: "class_id, name, due_at, estimated_minutes(15-min) required" }, { status: 400 });
+  }
+  if (task_quality_rating !== null && (task_quality_rating < 1 || task_quality_rating > 5)) {
+    return NextResponse.json({ error: "task_quality_rating must be 1 to 5" }, { status: 400 });
   }
 
   let { data, error } = await supabase
@@ -55,6 +67,8 @@ export async function POST(request: Request) {
       estimated_minutes,
       remaining_minutes: estimated_minutes,
       status: "not_started",
+      task_completion_rating,
+      task_quality_rating,
     })
     .select()
     .single();
@@ -72,6 +86,8 @@ export async function POST(request: Request) {
         estimated_minutes,
         remaining_minutes: estimated_minutes,
         status: "not_started",
+        task_completion_rating,
+        task_quality_rating,
       })
       .select()
       .single());
@@ -91,6 +107,8 @@ export async function POST(request: Request) {
         estimated_minutes,
         remaining_minutes: estimated_minutes,
         status: "not_started",
+        task_completion_rating,
+        task_quality_rating,
       })
       .select()
       .single());

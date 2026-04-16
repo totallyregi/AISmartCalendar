@@ -1,4 +1,5 @@
 export type AssignmentStatus = "not_started" | "in_progress" | "done";
+export type TaskCompletionRating = "not_started" | "partially_completed" | "completed";
 export type HabitType = "fixed" | "flexible";
 export type SchedulerMode = "intense" | "relaxed" | "lazy";
 
@@ -27,6 +28,8 @@ export interface Assignment {
   estimated_minutes: number;
   remaining_minutes: number;
   status: AssignmentStatus;
+  task_completion_rating: TaskCompletionRating;
+  task_quality_rating: number | null;
   created_at?: string;
 }
 

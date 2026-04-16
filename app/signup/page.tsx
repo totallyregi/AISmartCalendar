@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { publicSiteUrlFromWindow } from "@/lib/siteUrl";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -25,10 +26,12 @@ export default function SignupPage() {
     }
     setLoading(true);
     const supabase = createClient();
+    const siteUrl = publicSiteUrlFromWindow();
     const { data, error: err } = await supabase.auth.signUp({
       email,
       password,
       options: {
+        emailRedirectTo: siteUrl ? `${siteUrl}/auth/callback` : undefined,
         data: {
           display_name: displayName || undefined,
           redirect_help_first_login: true,
@@ -45,7 +48,7 @@ export default function SignupPage() {
       router.refresh();
       return;
     }
-    setMessage("Account created. Sign in to continue.");
+    setMessage("Check your email to confirm your account, then sign in.");
     router.refresh();
   }
 

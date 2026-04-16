@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import type { Assignment } from "@/lib/types";
+import type { Assignment, TaskCompletionRating } from "@/lib/types";
 import { TimePicker12h } from "@/components/TimePicker12h";
 import { localDateTimeToIsoUtc, localHhMmSsFromDate, localYyyyMmDd } from "@/lib/time12h";
 
 const statuses = ["not_started", "in_progress", "done"] as const;
+const completionRatings: TaskCompletionRating[] = ["not_started", "partially_completed", "completed"];
 
 function toMinutes(hours: number, minutes: number) {
   return hours * 60 + minutes;
@@ -44,6 +45,9 @@ export function AssignmentForm({
   const [estHours, setEstHours] = useState(Math.floor((assignment?.estimated_minutes ?? 0) / 60));
   const [estMins, setEstMins] = useState((assignment?.estimated_minutes ?? 0) % 60);
   const [status, setStatus] = useState(assignment?.status ?? "not_started");
+  const [taskCompletionRating, setTaskCompletionRating] = useState<TaskCompletionRating>(
+    assignment?.task_completion_rating ?? "not_started"
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,8 +68,20 @@ export function AssignmentForm({
     const url = assignment ? `/api/assignments/${assignment.id}` : "/api/assignments";
     const method = assignment ? "PUT" : "POST";
     const payload = assignment
-      ? { name, due_at, estimated_minutes, status }
-      : { class_id: classId, name, due_at, estimated_minutes };
+      ? {
+          name,
+          due_at,
+          estimated_minutes,
+          status,
+          task_completion_rating: taskCompletionRating,
+        }
+      : {
+          class_id: classId,
+          name,
+          due_at,
+          estimated_minutes,
+          task_completion_rating: taskCompletionRating,
+        };
 
     const res = await fetch(url, {
       method,
@@ -165,6 +181,22 @@ export function AssignmentForm({
             ))}
           </select>
         </div>
+
+        <div>
+          <label className="block text-sm font-medium text-palette-navy">Task completion rating</label>
+          <select
+            value={taskCompletionRating}
+            onChange={(e) => setTaskCompletionRating(e.target.value as TaskCompletionRating)}
+            className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy"
+          >
+            {completionRatings.map((rating) => (
+              <option key={rating} value={rating}>
+                {rating.replaceAll("_", " ")}
+              </option>
+            ))}
+          </select>
+        </div>
+
       </div>
 
       <div className="mt-4 flex gap-2">

@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
+const TASK_COMPLETION_RATINGS = ["not_started", "partially_completed", "completed"] as const;
+
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -15,6 +17,16 @@ export async function PUT(
   const body = await request.json();
   const requestedStatus = typeof body.status === "string" ? body.status : null;
   const markingDone = requestedStatus === "done";
+  const requestedCompletionRating =
+    typeof body.task_completion_rating === "string" && TASK_COMPLETION_RATINGS.includes(body.task_completion_rating)
+      ? body.task_completion_rating
+      : null;
+  const requestedQualityRating =
+    typeof body.task_quality_rating === "number" && Number.isInteger(body.task_quality_rating)
+      ? body.task_quality_rating
+      : body.task_quality_rating === null
+        ? null
+        : undefined;
 
   let previousStatus: string | null = null;
   if (markingDone) {
@@ -34,7 +46,17 @@ export async function PUT(
   if (typeof body.estimated_minutes === "number") updates.estimated_minutes = body.estimated_minutes;
   if (typeof body.remaining_minutes === "number") updates.remaining_minutes = body.remaining_minutes;
   if (["not_started", "in_progress", "done"].includes(body.status)) updates.status = body.status;
-  if (markingDone) updates.remaining_minutes = 0;
+  if (requestedCompletionRating) updates.task_completion_rating = requestedCompletionRating;
+  if (requestedQualityRating !== undefined) {
+    if (requestedQualityRating !== null && (requestedQualityRating < 1 || requestedQualityRating > 5)) {
+      return NextResponse.json({ error: "task_quality_rating must be 1 to 5" }, { status: 400 });
+    }
+    updates.task_quality_rating = requestedQualityRating;
+  }
+  if (markingDone) {
+    updates.remaining_minutes = 0;
+    updates.task_completion_rating = "completed";
+  }
 
   let { data, error } = await supabase
     .from("assignments")

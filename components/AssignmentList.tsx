@@ -7,8 +7,13 @@ import { createPortal } from "react-dom";
 import type { Assignment } from "@/lib/types";
 import { formatDueDateTime } from "@/lib/datetimeDisplay";
 import { AssignmentForm } from "./AssignmentForm";
+import { TaskQualityModal } from "./TaskQualityModal";
 
 type AssignmentTab = "incomplete" | "completed";
+
+function formatTaskCompletionRating(rating: Assignment["task_completion_rating"]) {
+  return rating.replaceAll("_", " ");
+}
 
 export function AssignmentList({
   classId,
@@ -24,6 +29,8 @@ export function AssignmentList({
   const [editing, setEditing] = useState<Assignment | null>(null);
   const [adding, setAdding] = useState(false);
   const [tab, setTab] = useState<AssignmentTab>("incomplete");
+  const [ratingTarget, setRatingTarget] = useState<Assignment | null>(null);
+  const [ratingLoading, setRatingLoading] = useState(false);
   const addTitleId = `assignment-add-title-${classId}`;
 
   useEffect(() => {
@@ -104,6 +111,32 @@ export function AssignmentList({
       </button>
 
       {addModal}
+      <TaskQualityModal
+        open={!!ratingTarget}
+        assignmentName={ratingTarget?.name ?? ""}
+        loading={ratingLoading}
+        onClose={() => {
+          if (!ratingLoading) setRatingTarget(null);
+        }}
+        onSubmit={async (quality) => {
+          if (!ratingTarget) return;
+          setRatingLoading(true);
+          const res = await fetch(`/api/assignments/${ratingTarget.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              status: "done",
+              task_completion_rating: "completed",
+              task_quality_rating: quality,
+            }),
+          });
+          setRatingLoading(false);
+          if (res.ok) {
+            setRatingTarget(null);
+            router.refresh();
+          }
+        }}
+      />
 
       <div
         className="flex gap-1 rounded-card border border-palette-card-border bg-palette-cream/70 p-1 shadow-[0_1px_2px_rgba(27,42,74,0.06)]"
@@ -161,24 +194,15 @@ export function AssignmentList({
                     <p className="text-sm text-palette-slate">
                       Due {formatDueDateTime(a.due_at)} · Estimated Completion Time: {a.estimated_minutes}min
                     </p>
+                    <p className="text-xs text-palette-slate">
+                      Completion: {formatTaskCompletionRating(a.task_completion_rating)} · Quality: {a.task_quality_rating ?? "Not rated"}
+                    </p>
                   </div>
                   <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={async () => {
-                        const ok = await confirm({
-                          title: "Mark assignment done?",
-                          message:
-                            "Mark this assignment as done? Future assignment events from now will be removed from your schedule.",
-                          confirmLabel: "Mark done",
-                        });
-                        if (!ok) return;
-                        const res = await fetch(`/api/assignments/${a.id}`, {
-                          method: "PUT",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ status: "done" }),
-                        });
-                        if (res.ok) router.refresh();
+                        setRatingTarget(a);
                       }}
                       className="text-sm font-medium text-palette-green"
                     >
@@ -248,6 +272,9 @@ export function AssignmentList({
                     <p className="font-medium text-palette-navy">{a.name}</p>
                     <p className="text-sm text-palette-slate">
                       Due {formatDueDateTime(a.due_at)} · Estimated Completion Time: {a.estimated_minutes}min
+                    </p>
+                    <p className="text-xs text-palette-slate">
+                      Completion: {formatTaskCompletionRating(a.task_completion_rating)} · Quality: {a.task_quality_rating ?? "Not rated"}
                     </p>
                   </div>
                   <div className="flex gap-2">

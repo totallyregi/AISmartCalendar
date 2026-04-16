@@ -57,6 +57,8 @@ create table if not exists public.assignments (
   estimated_minutes int not null check (estimated_minutes > 0 and estimated_minutes % 15 = 0),
   remaining_minutes int not null check (remaining_minutes >= 0 and remaining_minutes % 15 = 0),
   status public.assignment_status not null default 'not_started',
+  task_completion_rating text not null default 'not_started' check (task_completion_rating in ('not_started', 'partially_completed', 'completed')),
+  task_quality_rating int check (task_quality_rating between 1 and 5),
   created_at timestamptz not null default now()
 );
 
@@ -255,6 +257,17 @@ alter table public.habit_flexible_rules
 alter table public.habit_flexible_rules
   drop constraint if exists habit_flexible_rules_times_per_week_check,
   add constraint habit_flexible_rules_times_per_week_check check (times_per_week is null or (times_per_week >= 1));
+
+alter table public.assignments
+  add column if not exists task_completion_rating text not null default 'not_started';
+alter table public.assignments
+  add column if not exists task_quality_rating int;
+alter table public.assignments
+  drop constraint if exists assignments_task_completion_rating_check,
+  add constraint assignments_task_completion_rating_check check (task_completion_rating in ('not_started', 'partially_completed', 'completed'));
+alter table public.assignments
+  drop constraint if exists assignments_task_quality_rating_check,
+  add constraint assignments_task_quality_rating_check check (task_quality_rating is null or (task_quality_rating between 1 and 5));
 
 alter table public.profiles enable row level security;
 alter table public.class_sections enable row level security;
