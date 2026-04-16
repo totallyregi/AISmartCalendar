@@ -4,11 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { publicSiteUrlFromWindow } from "@/lib/siteUrl";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -19,14 +19,16 @@ export default function SignupPage() {
     e.preventDefault();
     setError(null);
     setMessage(null);
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
     setLoading(true);
     const supabase = createClient();
-    const siteUrl = publicSiteUrlFromWindow();
-    const { error: err } = await supabase.auth.signUp({
+    const { data, error: err } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: siteUrl ? `${siteUrl}/auth/callback` : undefined,
         data: {
           display_name: displayName || undefined,
           redirect_help_first_login: true,
@@ -38,7 +40,12 @@ export default function SignupPage() {
       setError(err.message);
       return;
     }
-    setMessage("Check your email to confirm your account, then sign in.");
+    if (data.session) {
+      router.push("/help");
+      router.refresh();
+      return;
+    }
+    setMessage("Account created. Sign in to continue.");
     router.refresh();
   }
 
@@ -96,6 +103,20 @@ export default function SignupPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+            />
+          </div>
+          <div>
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Confirm password
+            </label>
+            <input
+              id="confirmPassword"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               required
               minLength={6}
               className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
