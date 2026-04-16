@@ -205,11 +205,7 @@ export default function HelpPage() {
             up to date.
           </li>
           <li>
-            Add or update assignments from{" "}
-            <Link href="/assignments" className={linkCls}>
-              To-do List
-            </Link>{" "}
-            or each class page.
+            Add or update assignments from each class page.
           </li>
           <li>
             Open{" "}
