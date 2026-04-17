@@ -7,6 +7,7 @@ import type { Assignment } from "@/lib/types";
 import { formatDueDateTime } from "@/lib/datetimeDisplay";
 import { AssignmentForm } from "./AssignmentForm";
 import { TaskQualityModal } from "./TaskQualityModal";
+import { useToast } from "@/components/ToastProvider";
 
 type AssignmentWithClass = Assignment & { class_code: string; class_name: string };
 type SortKey = "due_asc" | "due_desc" | "alpha" | "class" | "est_desc" | "est_asc";
@@ -43,6 +44,7 @@ type TodoTab = "incomplete" | "completed";
 export function TodoAssignmentBoard({ assignments }: { assignments: AssignmentWithClass[] }) {
   const router = useRouter();
   const confirm = useConfirm();
+  const { showToast } = useToast();
   const [editing, setEditing] = useState<AssignmentWithClass | null>(null);
   const [sortBy, setSortBy] = useState<SortKey>("due_asc");
   const [tab, setTab] = useState<TodoTab>("incomplete");
@@ -84,6 +86,9 @@ export function TodoAssignmentBoard({ assignments }: { assignments: AssignmentWi
           if (res.ok) {
             setRatingTarget(null);
             router.refresh();
+          } else {
+            const data = await res.json().catch(() => ({}));
+            showToast((data as { error?: string }).error ?? "Failed to mark assignment done", "error");
           }
         }}
       />
