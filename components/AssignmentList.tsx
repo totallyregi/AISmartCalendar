@@ -11,8 +11,8 @@ import { TaskQualityModal } from "./TaskQualityModal";
 
 type AssignmentTab = "incomplete" | "completed";
 
-function formatTaskCompletionRating(rating: Assignment["task_completion_rating"]) {
-  return rating.replaceAll("_", " ");
+function formatTaskCompletionRating(rating: Assignment["task_completion_rating"] | null | undefined) {
+  return (rating ?? "not_started").replaceAll("_", " ");
 }
 
 export function AssignmentList({

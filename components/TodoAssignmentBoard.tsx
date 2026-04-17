@@ -11,8 +11,8 @@ import { TaskQualityModal } from "./TaskQualityModal";
 type AssignmentWithClass = Assignment & { class_code: string; class_name: string };
 type SortKey = "due_asc" | "due_desc" | "alpha" | "class" | "est_desc" | "est_asc";
 
-function formatTaskCompletionRating(rating: Assignment["task_completion_rating"]) {
-  return rating.replaceAll("_", " ");
+function formatTaskCompletionRating(rating: Assignment["task_completion_rating"] | null | undefined) {
+  return (rating ?? "not_started").replaceAll("_", " ");
 }
 
 function sortAssignments(items: AssignmentWithClass[], sortBy: SortKey) {
