@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export function TaskQualityModal({
   open,
@@ -15,7 +15,11 @@ export function TaskQualityModal({
   onClose: () => void;
   onSubmit: (quality: number) => void;
 }) {
-  const [quality, setQuality] = useState(3);
+  const [quality, setQuality] = useState<number | "">("");
+
+  useEffect(() => {
+    if (open) setQuality("");
+  }, [open, assignmentName]);
 
   if (!open) return null;
 
@@ -44,10 +48,11 @@ export function TaskQualityModal({
           <label className="block text-sm font-medium text-palette-navy">Quality (1 = low, 5 = high)</label>
           <select
             value={quality}
-            onChange={(e) => setQuality(Number(e.target.value))}
+            onChange={(e) => setQuality(e.target.value ? Number(e.target.value) : "")}
             disabled={loading}
             className="mt-1 w-full rounded-lg border border-palette-card-border bg-palette-card-bg px-3 py-2 text-palette-navy"
           >
+            <option value="">Select a rating</option>
             {[1, 2, 3, 4, 5].map((rating) => (
               <option key={rating} value={rating}>
                 {rating}
@@ -68,8 +73,11 @@ export function TaskQualityModal({
           <button
             type="button"
             className="rounded-lg bg-palette-navy px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:brightness-110 disabled:opacity-60"
-            onClick={() => onSubmit(quality)}
-            disabled={loading}
+            onClick={() => {
+              if (quality === "") return;
+              onSubmit(quality);
+            }}
+            disabled={loading || quality === ""}
           >
             {loading ? "Saving..." : "Save and mark done"}
           </button>

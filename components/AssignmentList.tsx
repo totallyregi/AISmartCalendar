@@ -8,6 +8,7 @@ import type { Assignment } from "@/lib/types";
 import { formatDueDateTime } from "@/lib/datetimeDisplay";
 import { AssignmentForm } from "./AssignmentForm";
 import { TaskQualityModal } from "./TaskQualityModal";
+import { useToast } from "@/components/ToastProvider";
 
 type AssignmentTab = "incomplete" | "completed";
 
@@ -24,6 +25,7 @@ export function AssignmentList({
 }) {
   const router = useRouter();
   const confirm = useConfirm();
+  const { showToast } = useToast();
   const addAssignmentTriggerRef = useRef<HTMLButtonElement>(null);
   const prevAddingRef = useRef(false);
   const [editing, setEditing] = useState<Assignment | null>(null);
@@ -134,6 +136,9 @@ export function AssignmentList({
           if (res.ok) {
             setRatingTarget(null);
             router.refresh();
+          } else {
+            const data = await res.json().catch(() => ({}));
+            showToast((data as { error?: string }).error ?? "Failed to mark assignment done", "error");
           }
         }}
       />
